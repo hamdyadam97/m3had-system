@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ student.full_name }} - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-user"></i> {{ student.full_name }}</h2>
+    <div>
+        <a href="{% url 'students:student_edit' student.pk %}" class="btn btn-warning">
+            <i class="fas fa-edit"></i> تعديل
+        </a>
+        <a href="{% url 'students:student_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-right"></i> رجوع
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-user"></i> البيانات الشخصية</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="fw-bold">الاسم الكامل:</td>
+                        <td>{{ student.full_name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">رقم الهاتف:</td>
+                        <td>{{ student.phone }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">البريد الإلكتروني:</td>
+                        <td>{{ student.email|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">رقم البطاقة:</td>
+                        <td>{{ student.national_id|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">العنوان:</td>
+                        <td>{{ student.address|default:"-" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">تاريخ التسجيل:</td>
+                        <td>{{ student.registration_date|date:"Y-m-d" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-graduation-cap"></i> بيانات الدورة</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="fw-bold">الدورة/الدبلومة:</td>
+                        <td>{{ student.course.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">نوع الدورة:</td>
+                        <td>{{ student.course.get_course_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">السعر الإجمالي:</td>
+                        <td>{{ student.total_price|floatformat:2 }} ج.م</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">طريقة الدفع:</td>
+                        <td>
+                            <span class="badge {% if student.payment_method == 'cash' %}bg-success{% else %}bg-info{% endif %}">
+                                {{ student.get_payment_method_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">مكان الدفع:</td>
+                        <td>{{ student.get_payment_location_display }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">حالة الدفع:</td>
+                        <td>
+                            <span class="badge {% if student.is_fully_paid %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ student.get_payment_status }}
+                            </span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> ملخص المدفوعات</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 border-end">
+                        <h6 class="text-muted">السعر الإجمالي</h6>
+                        <h3 class="text-primary">{{ student.total_price|floatformat:2 }} ج.م</h3>
+                    </div>
+                    <div class="col-md-4 border-end">
+                        <h6 class="text-muted">المبلغ المدفوع</h6>
+                        <h3 class="text-success">{{ student.get_total_paid|floatformat:2 }} ج.م</h3>
+                    </div>
+                    <div class="col-md-4">
+                        <h6 class="text-muted">المبلغ المتبقي</h6>
+                        <h3 class="{% if student.get_remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ student.get_remaining_amount|floatformat:2 }} ج.م
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

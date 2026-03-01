@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}قائمة الطلاب - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users"></i> قائمة الطلاب</h2>
+    <a href="{% url 'students:student_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> إضافة طالب جديد
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>رقم الهاتف</th>
+                        <th>الدورة/الدبلومة</th>
+                        <th>طريقة الدفع</th>
+                        <th>السعر</th>
+                        <th>المبلغ المدفوع</th>
+                        <th>المتبقي</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ student.full_name }}</td>
+                        <td>{{ student.phone }}</td>
+                        <td>{{ student.course.name }}</td>
+                        <td>
+                            <span class="badge {% if student.payment_method == 'cash' %}bg-success{% else %}bg-info{% endif %}">
+                                {{ student.get_payment_method_display }}
+                            </span>
+                        </td>
+                        <td>{{ student.total_price|floatformat:2 }}</td>
+                        <td>{{ student.get_total_paid|floatformat:2 }}</td>
+                        <td>
+                            <span class="{% if student.get_remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                                {{ student.get_remaining_amount|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>{{ student.registration_date|date:"Y-m-d" }}</td>
+                        <td>
+                            <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'students:student_edit' student.pk %}" class="btn btn-sm btn-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p>لا يوجد طلاب مسجلين</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

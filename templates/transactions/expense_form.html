@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-danger text-white py-3">
+                <h5 class="mb-0 text-center"><i class="fas fa-file-invoice-dollar me-2"></i> {{ title }}</h5>
+            </div>
+            <div class="card-body p-4">
+
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    {% if not user.branch %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الفرع التابع له المصروف</label>
+                        {{ form.branch }}
+                        <div class="text-danger small">{{ form.branch.errors }}</div>
+                    </div>
+                    {% else %}
+                        {{ form.branch }} <div class="alert alert-light border mb-3 py-2">
+                            <small class="text-muted d-block">تسجيل مصروف لفرع:</small>
+                            <span class="fw-bold text-dark">{{ user.branch.name }}</span>
+                        </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">بند المصروف</label>
+                            {{ form.category }}
+                            <div class="text-danger small">{{ form.category.errors }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">المبلغ</label>
+                            <div class="input-group">
+                                {{ form.amount }}
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                            <div class="text-danger small">{{ form.amount.errors }}</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">التاريخ</label>
+                            {{ form.date }}
+                            <div class="text-danger small">{{ form.date.errors }}</div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">صورة الفاتورة/الوصل</label>
+                            {{ form.receipt_image }}
+                            <div class="text-danger small">{{ form.receipt_image.errors }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">ملاحظات / بيان الصرف</label>
+                        {{ form.notes }}
+                        <div class="text-danger small">{{ form.notes.errors }}</div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg">
+                            <i class="fas fa-check-circle me-1"></i> حفظ المصروف
+                        </button>
+                        <a href="{% url 'transactions:expense_list' %}" class="btn btn-light border">إلغاء والعودة</a>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

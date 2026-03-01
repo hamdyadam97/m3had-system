@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+
+{% block title %}قائمة المصروفات{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link " href="{% url 'transactions:income_list' %}">الإيرادات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'transactions:expense_list' %}">المصروفات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'transactions:daily_summary' %}">الملخص اليومي</a>
+    </li>
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <h2 class="text-danger"><i class="fas fa-file-invoice-dollar"></i> المصروفات التشغيلية</h2>
+    <a href="{% url 'transactions:expense_add' %}" class="btn btn-danger shadow-sm">
+        <i class="fas fa-plus"></i> تسجيل مصروف جديد
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">التاريخ</th>
+                        <th>البند / التصنيف</th>
+                        <th>المبلغ</th>
+                        <th>البيان / الملاحظات</th>
+                        <th>بواسطة</th>
+                        <th>المرفق</th>
+                        <th class="text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for expense in expenses %}
+                    <tr>
+                        <td class="ps-3">
+                            <span class="d-block fw-bold">{{ expense.date|date:"Y-m-d" }}</span>
+                            <small class="text-muted small">فرع: {{ expense.branch.name }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-danger border border-danger border-opacity-25 px-2 py-1">
+                                {{ expense.category.name }}
+                            </span>
+                        </td>
+                        <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }} ج.م</td>
+                        <td class="text-muted small" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ expense.notes|default:"-" }}
+                        </td>
+                        <td><small>{{ expense.created_by.username }}</small></td>
+                        <td>
+                            {% if expense.receipt_image %}
+                                <a href="{{ expense.receipt_image.url }}" target="_blank" class="text-info"><i class="fas fa-paperclip"></i></a>
+                            {% else %}
+                                <span class="text-muted opacity-25"><i class="fas fa-times"></i></span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'transactions:expense_detail' expense.pk %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <p class="text-muted mb-0">لا توجد مصروفات مسجلة في هذا القسم حالياً.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if expenses.has_other_pages %}
+    <div class="card-footer bg-white border-top-0 py-3">
+        <nav aria-label="Expense Pagination">
+            <ul class="pagination justify-content-center mb-0">
+
+                {% if expenses.has_previous %}
+                <li class="page-item">
+                    <a class="page-link border-0 shadow-sm mx-1 rounded text-danger" href="?page={{ expenses.previous_page_number }}">
+                        السابق
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for i in expenses.paginator.page_range %}
+                    {% if expenses.number == i %}
+                    <li class="page-item active mx-1"><span class="page-link border-0 rounded bg-danger shadow-sm">{{ i }}</span></li>
+                    {% elif i > expenses.number|add:'-3' and i < expenses.number|add:'3' %}
+                    <li class="page-item mx-1"><a class="page-link border-0 rounded text-dark shadow-sm" href="?page={{ i }}">{{ i }}</a></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if expenses.has_next %}
+                <li class="page-item">
+                    <a class="page-link border-0 shadow-sm mx-1 rounded text-danger" href="?page={{ expenses.next_page_number }}">
+                        التالي
+                    </a>
+                </li>
+                {% endif %}
+
+            </ul>
+        </nav>
+        <div class="text-center mt-2">
+            <small class="text-muted">عرض {{ expenses.start_index }} - {{ expenses.end_index }} من أصل {{ expenses.paginator.count }} مصروف</small>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

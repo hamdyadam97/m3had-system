@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}تفاصيل {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'courses:course_list' %}">الدورات</a></li>
+            <li class="breadcrumb-item active">{{ course.name }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="bg-primary text-white rounded p-3 me-3">
+                        <i class="fas fa-graduation-cap fa-2x"></i>
+                    </div>
+                    <div>
+                        <h2 class="fw-bold mb-0">{{ course.name }}</h2>
+                        <span class="text-muted">كود الدورة: {{ course.code }}</span>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mb-3">وصف الدورة</h5>
+                <p class="text-secondary leading-relaxed mb-4">
+                    {{ course.description|default:"لا يوجد وصف متوفر لهذه الدورة حالياً." }}
+                </p>
+
+                <div class="row g-3">
+                    <div class="col-sm-4 text-center p-3 bg-light rounded-3">
+                        <i class="fas fa-clock text-primary mb-2"></i>
+                        <small class="d-block text-muted">مدة التدريب</small>
+                        <span class="fw-bold">{{ course.duration_days }} يوم</span>
+                    </div>
+                    <div class="col-sm-4 text-center p-3 bg-light rounded-3">
+                        <i class="fas fa-tag text-success mb-2"></i>
+                        <small class="d-block text-muted">سعر الاشتراك</small>
+                        <span class="fw-bold text-success">{{ course.price|floatformat:2 }} ج.م</span>
+                    </div>
+                    <div class="col-sm-4 text-center p-3 bg-light rounded-3">
+                        <i class="fas fa-calendar-alt text-info mb-2"></i>
+                        <small class="d-block text-muted">تاريخ الإضافة</small>
+                        <span class="fw-bold small">{{ course.created_at|date:"Y-m-d" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white py-3">
+                <h6 class="mb-0 fw-bold text-dark">الفروع المتاحة بها هذه الدورة</h6>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for branch in course.branches.all %}
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                        <span class="fw-bold">{{ branch.name }}</span>
+                    </div>
+                    <span class="badge bg-light text-dark border">نشط</span>
+                </div>
+                {% empty %}
+                <div class="p-3 text-center text-muted">لم يتم ربط هذه الدورة بأي فرع بعد</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm bg-primary text-white mb-4">
+            <div class="card-body p-4 text-center">
+                <h6 class="text-uppercase mb-3 opacity-75">الطلاب المسجلين</h6>
+                <h1 class="display-4 fw-bold mb-0">{{ students_count }}</h1>
+                <small>طالب فعال</small>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-center mb-3">
+                    <div class="bg-success-light text-success rounded p-2 me-3">
+                        <i class="fas fa-wallet fa-lg"></i>
+                    </div>
+                    <h6 class="mb-0 fw-bold">إجمالي الإيرادات</h6>
+                </div>
+                <h3 class="fw-bold text-success">{{ total_income|floatformat:2 }} <small class="fs-6">ج.م</small></h3>
+                <div class="progress mt-3" style="height: 8px;">
+                    <div class="progress-bar bg-success" style="width: 100%"></div>
+                </div>
+                <p class="small text-muted mt-2 mb-0">صافي المحصل من اشتراكات الطلاب</p>
+            </div>
+        </div>
+
+<div class="d-grid gap-2">
+    {% if user.is_superuser or user.user_type == 'admin' %}
+    <a href="{% url 'courses:course_edit' course.pk %}" class="btn btn-warning text-white">
+        <i class="fas fa-edit"></i> تعديل بيانات الدورة
+    </a>
+    {% endif %}
+
+    {% if user.is_superuser %}
+    <a href="{% url 'courses:course_delete' course.pk %}" class="btn btn-outline-danger">
+        <i class="fas fa-archive"></i> أرشفة (حذف ناعم)
+    </a>
+    {% endif %}
+
+    <a href="{% url 'courses:course_list' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-undo"></i> العودة لقائمة الدورات
+    </a>
+</div>    </div>
+</div>
+
+<style>
+    .bg-success-light { background-color: rgba(25, 135, 84, 0.1); }
+    .leading-relaxed { line-height: 1.6; }
+</style>
+{% endblock %}

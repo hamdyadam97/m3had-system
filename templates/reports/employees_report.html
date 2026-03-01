@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}تقرير الموظفين - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users"></i> تقرير أداء الموظفين</h2>
+    <form method="get" class="d-flex">
+        <input type="date" name="date" class="form-control me-2" value="{{ date|date:'Y-m-d' }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i> عرض
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>الموظف</th>
+                        <th>التسجيلات</th>
+                        <th>التحصيلات</th>
+                        <th>كاش</th>
+                        <th>فيزا</th>
+                        <th>تحويل بنكي</th>
+                        <th>إجمالي المحصل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for data in employees_data %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ data.employee.get_full_name|default:data.employee.username }}</td>
+                        <td>{{ data.registrations_count }}</td>
+                        <td>{{ data.installments_count }}</td>
+                        <td class="text-success">{{ data.cash_collected|floatformat:2 }}</td>
+                        <td class="text-info">{{ data.visa_collected|floatformat:2 }}</td>
+                        <td class="text-warning">{{ data.bank_collected|floatformat:2 }}</td>
+                        <td class="fw-bold text-primary">{{ data.total_collected|floatformat:2 }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p>لا توجد بيانات</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

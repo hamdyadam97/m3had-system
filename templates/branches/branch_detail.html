@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}تفاصيل {{ branch.name }} - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a href="{% url 'branches:branch_list' %}">الفروع</a></li>
+                <li class="breadcrumb-item active">{{ branch.name }}</li>
+            </ol>
+        </nav>
+        <h2 class="mb-0"><i class="fas fa-university text-primary"></i> {{ branch.name }} <span class="badge bg-secondary fs-6">{{ branch.code }}</span></h2>
+    </div>
+    <div class="btn-group">
+        {% if user.is_superuser or user.user_type == 'admin' %}
+        <a href="{% url 'branches:branch_edit' branch.pk %}" class="btn btn-warning"><i class="fas fa-edit"></i> تعديل البيانات</a>
+        {% endif %}
+        <a href="{% url 'branches:branch_list' %}" class="btn btn-outline-secondary">عودة للقائمة</a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-dark text-white fw-bold">
+                <i class="fas fa-chart-pie"></i> المؤشرات المالية
+            </div>
+            <div class="card-body">
+               <div class="card shadow-sm border-0 mb-4">
+    <div class="card-body text-center">
+        <h6 class="text-muted">هدف شهر {{ date.today|date:"F Y" }}</h6>
+        <h3 class="text-primary fw-bold">{{ branch.get_current_month_target|floatformat:2 }} ج.م</h3>
+        <small class="text-muted">المطلوب يومياً: {{ branch.get_current_month_daily_target|floatformat:2 }} ج.م</small>
+    </div>
+</div>
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>حالة الفرع:</span>
+                    {% if branch.is_active %}
+                    <span class="badge bg-success">نشط ومفعل</span>
+                    {% else %}
+                    <span class="badge bg-danger">متوقف حالياً</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-light fw-bold">
+                <i class="fas fa-info-circle"></i> معلومات التواصل
+            </div>
+            <div class="card-body">
+                <p><strong><i class="fas fa-phone-alt text-muted me-2"></i> الهاتف:</strong> {{ branch.phone|default:"غير مسجل" }}</p>
+                <p><strong><i class="fas fa-envelope text-muted me-2"></i> الإيميل:</strong> {{ branch.email|default:"غير مسجل" }}</p>
+                <p><strong><i class="fas fa-map-marker-alt text-muted me-2"></i> العنوان:</strong> <br> <span class="text-muted small">{{ branch.address|default:"لا يوجد عنوان مسجل" }}</span></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card border-start border-primary border-4 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-muted">إجمالي الطلاب</h6>
+                                <h3 class="mb-0">{{ branch.student_set.count }}</h3>
+                            </div>
+                            <i class="fas fa-user-graduate fa-2x text-primary opacity-25"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card border-start border-success border-4 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h6 class="text-muted">الدورات المتاحة</h6>
+                                <h3 class="mb-0">{{ branch.course_set.count }}</h3>
+                            </div>
+                            <i class="fas fa-book fa-2x text-success opacity-25"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white fw-bold d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-users-cog"></i> الموظفين التابعين للفرع</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th>الموظف</th>
+                            <th>نوع الحساب</th>
+                            <th>آخر ظهور</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in branch.user_set.all %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ employee.get_full_name|default:employee.username }}</div>
+                                <div class="small text-muted">{{ employee.email }}</div>
+                            </td>
+                            <td>
+                                <span class="badge rounded-pill bg-light text-dark border">
+                                    {{ employee.get_user_type_display }}
+                                </span>
+                            </td>
+                            <td class="small">{{ employee.last_login|date:"Y-m-d H:i"|default:"لم يسجل دخول بعد" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-center py-4 text-muted">لا يوجد موظفين مسجلين لهذا الفرع</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card mt-4 shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center bg-white">
+        <h6 class="mb-0 fw-bold">تاريخ الأهداف الشهرية</h6>
+        <a href="{% url 'branches:target_add' %}?branch={{ branch.id }}" class="btn btn-sm btn-primary">+ هدف جديد</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>الشهر/السنة</th>
+                    <th>الهدف</th>
+                    <th>اليومي</th>
+                    <th>إجراء</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in branch.targets.all %}
+                <tr>
+                    <td>{{ t.get_month_display }} {{ t.year }}</td>
+                    <td>{{ t.amount|floatformat:0 }} ج.م</td>
+                    <td>{{ t.get_daily_target|floatformat:0 }} ج.م</td>
+                    <td>
+                        <a href="{% url 'branches:target_edit' t.pk %}" class="text-warning"><i class="fas fa-edit"></i></a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+    </div>
+</div>
+{% endblock %}

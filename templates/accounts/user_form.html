@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-0 shadow">
+            <div class="card-header bg-primary text-white py-3">
+                <h5 class="mb-0">{{ title }}</h5>
+            </div>
+            <div class="card-body p-4">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">اسم المستخدم</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">نوع المستخدم</label>
+                            {{ form.user_type }}
+                        </div>
+<div class="col-md-12 mt-3">
+    <label class="fw-bold text-primary">رتبة الموظف (الصلاحيات الجاهزة):</label>
+    {{ form.groups }}
+    <div class="small text-muted mt-1">بمجرد اختيار "محاسب" مثلاً، سيحصل المستخدم على كافة صلاحيات الحسابات.</div>
+</div>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">البريد الإلكتروني</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
+                            <small class="text-muted small">ضروري لاستعادة الحساب والتواصل</small>
+                        </div>
+
+                        {% if not user_obj %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">كلمة المرور</label>
+                            {{ form.password1 }}
+                            {% if form.password1.errors %}<div class="text-danger small">{{ form.password1.errors }}</div>{% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">تأكيد كلمة المرور</label>
+                            {{ form.password2 }}
+                            {% if form.password2.errors %}<div class="text-danger small">{{ form.password2.errors }}</div>{% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">الاسم الأول</label>
+                            {{ form.first_name }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">الاسم الأخير</label>
+                            {{ form.last_name }}
+                        </div>
+
+                        <div class="col-md-12" id="managed_branches_section" style="display:none;">
+                            <label class="form-label fw-bold text-primary">الفروع المسئول عنها (للمدير الإقليمي)</label>
+                            {{ form.managed_branches }}
+                        </div>
+
+                        <div class="col-md-12" id="branch_section">
+                            <label class="form-label fw-bold">الفرع (للموظفين ومديري الفروع)</label>
+                            {{ form.branch }}
+                        </div>
+
+                    </div>
+
+                    <hr class="my-4">
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-success px-5">حفظ البيانات</button>
+                        <a href="{% url 'accounts:user_list' %}" class="btn btn-light">إلغاء</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userTypeField = document.querySelector('[name="user_type"]');
+        const managedSection = document.getElementById('managed_branches_section');
+        const branchSection = document.getElementById('branch_section');
+
+        function toggleSections() {
+            if (userTypeField.value === 'regional_manager') {
+                managedSection.style.display = 'block';
+                branchSection.style.display = 'none';
+            } else {
+                managedSection.style.display = 'none';
+                branchSection.style.display = 'block';
+            }
+        }
+
+        userTypeField.addEventListener('change', toggleSections);
+        toggleSections();
+    });
+</script>
+{% endblock %}

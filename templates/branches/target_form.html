@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h5 class="mb-0 fw-bold">إضافة هدف شهري</h5>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="mb-4 text-center border-bottom pb-3">
+                        <span class="text-muted d-block small">الفرع المستهدف</span>
+                        <h4 class="text-dark fw-bold mb-0">{{ branch.name }}</h4>
+                    </div>
+
+                    <form method="post" novalidate>
+                        {% csrf_token %}
+                        <input type="hidden" name="branch" value="{{ branch.id }}">
+                         {% if form.non_field_errors %}
+                        <div class="alert alert-danger p-2 small">
+                            {{ form.non_field_errors.0 }}
+                        </div>
+                        {% endif %}
+
+                        <div class="row g-3"> <div class="col-6">
+                                <label class="form-label small fw-bold">السنة</label>
+                                {{ form.year }}
+                                {% if form.year.errors %}
+                                    <div class="text-danger extra-small">{{ form.year.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-6">
+                                <label class="form-label small fw-bold">الشهر</label>
+                                {{ form.month }}
+                                {% if form.month.errors %}
+                                    <div class="text-danger extra-small">{{ form.month.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12 mt-3">
+                                <label class="form-label small fw-bold">المبلغ المستهدف</label>
+                                <div class="input-group">
+                                    {{ form.amount }}
+                                    <span class="input-group-text">ج.م</span>
+                                </div>
+                                {% if form.amount.errors %}
+                                    <div class="text-danger extra-small">{{ form.amount.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-4">
+                            <button type="submit" class="btn btn-success btn-lg fs-6">
+                                <i class="fas fa-save"></i> حفظ البيانات
+                            </button>
+                            <a href="{% url 'branches:branch_detail' branch.id %}" class="btn btn-outline-secondary btn-sm">
+                                إلغاء
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* لمسة بسيطة لضبط الأحجام في الموبايل */
+    .extra-small { font-size: 0.75rem; }
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+</style>
+
+<style>
+    /* تنسيق إضافي لجعل الشكل "مودرن" */
+    .bg-success-soft {
+        background-color: rgba(25, 135, 84, 0.1);
+    }
+    .rounded-3 { border-radius: 12px !important; }
+    .border { border: 1px solid #e9ecef !important; }
+</style>
+{% endblock %}

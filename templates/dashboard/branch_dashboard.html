@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة تحكم فرع {{ branch.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1"><i class="fas fa-university text-primary"></i> فرع {{ branch.name }}</h2>
+        <p class="text-muted small">إحصائيات تفصيلية للأداء المالي والأكاديمي</p>
+    </div>
+    <a href="{% url 'dashboard:dashboard' %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right"></i> العودة للرئيسية
+    </a>
+</div>
+
+<div class="row mb-4 text-white">
+    <div class="col-md-4">
+        <div class="card stat-card shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="opacity-75">تحصيل اليوم</h6>
+                <h2 class="fw-bold">{{ today_income|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <i class="fas fa-cash-register fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card warning shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="opacity-75">مصروفات اليوم</h6>
+                <h2 class="fw-bold">{{ today_expenses|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <i class="fas fa-outdent fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card success shadow-sm h-100">
+            <div class="card-body">
+                <h6 class="opacity-75">صافي اليوم</h6>
+                <h2 class="fw-bold">{{ today_net|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <i class="fas fa-chart-line fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-dark"><i class="fas fa-calendar-check me-2"></i> ملخص الشهر الحالي</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4 border-end">
+                        <p class="text-muted mb-1">إجمالي الإيرادات</p>
+                        <h4 class="text-success">{{ monthly_income|floatformat:2 }}</h4>
+                    </div>
+                    <div class="col-md-4 border-end">
+                        <p class="text-muted mb-1">إجمالي المصروفات</p>
+                        <h4 class="text-danger">{{ monthly_expenses|floatformat:2 }}</h4>
+                    </div>
+                    <div class="col-md-4">
+                        <p class="text-muted mb-1">الصافي الشهري</p>
+                        <h4 class="text-primary">{{ monthly_net|floatformat:2 }}</h4>
+                    </div>
+                </div>
+                <hr>
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">التقدم نحو الهدف المالي ({{ monthly_target }} ج.م)</span>
+                        <span class="badge bg-primary fs-6">{{ achievement_percentage }}%</span>
+                    </div>
+                    <div class="progress shadow-sm" style="height: 25px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated {% if achievement_percentage >= 100 %}bg-success{% else %}bg-info{% endif %}"
+                             role="progressbar"
+                             style="width: {{ achievement_percentage }}%">
+                            {{ achievement_percentage }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-dark"><i class="fas fa-award me-2"></i> أفضل 5 دورات في هذا الفرع</h5>
+            </div>
+            <div class="card-body p-0">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>الدورة</th>
+                            <th class="text-center">الطلاب النشطين</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in top_courses %}
+                        <tr>
+                            <td class="fw-bold">{{ course.name }}</td>
+                            <td class="text-center">
+                                <span class="badge rounded-pill bg-light text-dark border px-3">
+                                    {{ course.students_count }} طالب
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center p-4">لا توجد بيانات دورات لهذا الفرع</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 mb-4 bg-light">
+            <div class="card-body">
+                <h5 class="card-title mb-4">إجراءات سريعة لهذا الفرع</h5>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'transactions:income_add' %}?branch={{ branch.id }}" class="btn btn-primary text-start">
+                        <i class="fas fa-plus-circle me-2"></i> إضافة إيراد للفرع
+                    </a>
+                    <a href="{% url 'transactions:expense_add' %}?branch={{ branch.id }}" class="btn btn-warning text-white text-start">
+                        <i class="fas fa-minus-circle me-2"></i> إضافة مصروف للفرع
+                    </a>
+                    <a href="{% url 'students:student_add' %}?branch={{ branch.id }}" class="btn btn-success text-start">
+                        <i class="fas fa-user-plus me-2"></i> إضافة طالب للفرع
+                    </a>
+                    <hr>
+                    <a href="{% url 'reports:daily_report' %}?branch={{ branch.id }}" class="btn btn-outline-dark text-start border-0">
+                        <i class="fas fa-file-pdf me-2 text-danger"></i> تحميل تقرير مالي (PDF)
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-4">
+                <i class="fas fa-info-circle fa-3x text-info opacity-50 mb-3"></i>
+                <h6>معلومات الاتصال</h6>
+                <p class="small text-muted mb-1">{{ branch.address|default:"لا يوجد عنوان مسجل" }}</p>
+                <p class="small fw-bold">{{ branch.phone|default:"" }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

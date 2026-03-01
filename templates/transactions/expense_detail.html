@@ -1,0 +1,81 @@
+\{% extends 'base.html' %}
+
+{% block title %}سند صرف رقم #{{ expense.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="bg-danger py-2"></div>
+
+                <div class="card-body p-5">
+                    <div class="d-flex justify-content-between mb-5">
+                        <div>
+                            <h2 class="fw-bold text-danger mb-0">سند صرف مصروفات</h2>
+                            <span class="text-muted small">ID: #{{ expense.id }}</span>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="fw-bold">{{ expense.branch.name }}</h5>
+                            <span class="badge bg-light text-dark border">{{ expense.date|date:"d/m/Y" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-4 rounded-3 text-center mb-5 border border-danger border-opacity-25">
+                        <span class="d-block text-muted small text-uppercase">إجمالي المبلغ المدفوع</span>
+                        <h1 class="display-4 fw-bold text-danger mb-0">{{ expense.amount|floatformat:2 }} <small class="fs-4">ج.م</small></h1>
+                    </div>
+
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">بند المصروف</label>
+                            <span class="fw-bold fs-5">{{ expense.category.name|default:"مصروف عام" }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">مسؤول الصرف</label>
+                            <span class="fw-bold fs-5">{{ expense.created_by.get_full_name }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="text-muted small d-block border-bottom pb-1 mb-2">الغرض من الصرف</label>
+                        <div class="p-3 bg-light rounded border-start border-4 border-danger">
+                            {{ expense.notes }}
+                        </div>
+                    </div>
+
+                    {% if expense.receipt_image %}
+                    <div class="mb-5 d-print-none text-center">
+                        <label class="text-muted small d-block mb-2">صورة المرفق / الفاتورة</label>
+                        <a href="{{ expense.receipt_image.url }}" target="_blank">
+                            <img src="{{ expense.receipt_image.url }}" class="img-fluid rounded border shadow-sm" style="max-height: 200px;">
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-footer bg-white p-4 border-top d-flex justify-content-between d-print-none">
+                    <div class="btn-group">
+                        <button onclick="window.print();" class="btn btn-outline-dark px-4">
+                            <i class="fas fa-print"></i> طباعة
+                        </button>
+                        {% if user.is_superuser %}
+                        <a href="#" class="btn btn-outline-warning text-dark"><i class="fas fa-edit"></i> تعديل</a>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'transactions:expense_list' %}" class="btn btn-outline-secondary">العودة للمصروفات</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    @media print {
+        .navbar, .btn, .d-print-none, footer { display: none !important; }
+        .card { border: none !important; box-shadow: none !important; }
+        body { background-color: white !important; }
+        .container { width: 100% !important; max-width: 100% !important; }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block title %}سند قبض رقم #{{ income.id }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm overflow-hidden">
+                <div class="bg-success py-2"></div>
+
+                <div class="card-body p-5">
+                    <div class="d-flex justify-content-between align-items-center mb-5">
+                        <div>
+                            <h2 class="fw-bold text-success mb-0">سند قبض إيراد</h2>
+                            <span class="text-muted">رقم العملية: #{{ income.id }}</span>
+                        </div>
+                        <div class="text-end">
+                            <h5 class="fw-bold">{{ income.branch.name }}</h5>
+                            <p class="text-muted mb-0">{{ income.date|date:"d/m/Y" }}</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-light p-4 rounded-3 text-center mb-5 border">
+                        <span class="d-block text-muted small text-uppercase">المبلغ المحصل</span>
+                        <h1 class="display-4 fw-bold text-dark mb-0">{{ income.amount|floatformat:2 }} <small class="fs-4">ج.م</small></h1>
+                    </div>
+
+                    <div class="row g-4 mb-5">
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">اسم الطالب / العميل</label>
+                            <span class="fw-bold fs-5">{{ income.student.get_full_name|default:"عميل عام" }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">الدورة / الدبلومة</label>
+                            <span class="fw-bold fs-5 text-primary">{{ income.course.name|default:"غير محدد" }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">نوع الإيراد</label>
+                            <span class="badge bg-outline-success text-success border-success border px-3">
+                                {{ income.get_income_type_display }}
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">طريقة الدفع</label>
+                            <span class="fw-bold"><i class="fas fa-money-check-alt me-1"></i> كاش</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="text-muted small d-block border-bottom pb-1 mb-2">البيان / ملاحظات</label>
+                        <p class="fst-italic text-secondary">{{ income.notes|default:"لا توجد ملاحظات إضافية" }}</p>
+                    </div>
+
+                    <div class="row pt-4 border-top">
+                        <div class="col-6">
+                            <small class="d-block text-muted">المستلم (الموظف):</small>
+                            <span class="fw-bold">{{ income.collected_by.get_full_name|default:income.collected_by.username }}</span>
+                        </div>
+                        <div class="col-6 text-end">
+                            <small class="d-block text-muted">تاريخ التسجيل:</small>
+                            <span class="small">{{ income.created_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white p-4 border-top-0 d-flex justify-content-between d-print-none">
+                    <button onclick="window.print();" class="btn btn-dark px-4">
+                        <i class="fas fa-print me-2"></i> طباعة السند
+                    </button>
+                    <a href="{% url 'transactions:income_list' %}" class="btn btn-outline-secondary">العودة للقائمة</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

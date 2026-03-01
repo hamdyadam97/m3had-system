@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}قائمة الدورات والدبلومات{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0 fw-bold"><i class="fas fa-book-open text-primary me-2"></i> الدورات والبرامج التدريبية</h2>
+    {% if user.is_superuser or user.user_type == 'admin' %}
+    <a href="{% url 'courses:course_create' %}" class="btn btn-primary"><i class="fas fa-plus-circle"></i> إضافة دورة جديدة</a>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    {% for course in courses %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-sm hover-shadow transition">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <span class="badge {% if course.course_type == 'diploma' %}bg-purple{% else %}bg-info{% endif %} text-white rounded-pill px-3">
+                        {{ course.get_course_type_display }}
+                    </span>
+                    <small class="text-muted fw-bold">{{ course.code }}</small>
+                </div>
+                <h5 class="card-title fw-bold mb-2">{{ course.name }}</h5>
+                <p class="card-text text-muted small mb-4">
+                    {{ course.description|truncatewords:15 }}
+                </p>
+
+                <div class="d-flex justify-content-between align-items-center border-top pt-3">
+                    <div>
+                        <span class="d-block small text-muted">السعر</span>
+                        <span class="fw-bold text-success">{{ course.price|floatformat:0 }} ج.م</span>
+                    </div>
+                    <div>
+                        <span class="d-block small text-muted">المدة</span>
+                        <span class="fw-bold">{{ course.duration_days }} يوم</span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-0 pb-3">
+                <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-outline-primary w-100">
+                    عرض التفاصيل <i class="fas fa-arrow-left ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <img src="/static/images/empty_courses.svg" alt="No Courses" style="width: 200px;" class="mb-3">
+        <h4 class="text-muted">لا توجد دورات متاحة حالياً</h4>
+    </div>
+    {% endfor %}
+</div>
+
+<style>
+    .bg-purple { background-color: #6f42c1; }
+    .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15)!important; }
+    .transition { transition: all 0.3s ease; }
+</style>
+{% endblock %}

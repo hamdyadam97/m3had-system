@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+
+{% block title %}الإيرادات - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'transactions:income_list' %}">الإيرادات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'transactions:expense_list' %}">المصروفات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'transactions:daily_summary' %}">الملخص اليومي</a>
+    </li>
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-money-bill-wave"></i> الإيرادات</h2>
+    <a href="{% url 'transactions:income_add' %}" class="btn btn-primary">
+        <i class="fas fa-plus"></i> تسجيل إيراد جديد
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>التاريخ</th>
+                        <th>الطالب</th>
+                        <th>الدورة</th>
+                        <th>نوع الإيراد</th>
+                        <th>المبلغ</th>
+                        <th>طريقة الدفع</th>
+                        <th>مكان الدفع</th>
+                        <th>حصل بواسطة</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for income in incomes %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ income.date|date:"Y-m-d" }}</td>
+                        <td>{{ income.student.full_name }}</td>
+                        <td>{{ income.course.name }}</td>
+                        <td>
+                            <span class="badge {% if income.income_type == 'registration' %}bg-success{% else %}bg-info{% endif %}">
+                                {{ income.get_income_type_display }}
+                            </span>
+                        </td>
+                        <td class="fw-bold text-success">{{ income.amount|floatformat:2 }}</td>
+                        <td>{{ income.get_payment_method_display }}</td>
+                        <td>{{ income.get_payment_location_display }}</td>
+                        <td>{{ income.collected_by.get_full_name|default:income.collected_by.username }}</td>
+                        <td>
+                            <a href="{% url 'transactions:income_detail' income.pk %}" class="btn btn-sm btn-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p>لا يوجد إيرادات مسجلة</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if incomes.has_other_pages %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+
+        {% if incomes.has_previous %}
+        <li class="page-item">
+            <a class="page-link shadow-sm" href="?page={{ incomes.previous_page_number }}" aria-label="Previous">
+                <span aria-hidden="true">&laquo; السابق</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">السابق</span></li>
+        {% endif %}
+
+        {% for i in incomes.paginator.page_range %}
+            {% if incomes.number == i %}
+            <li class="page-item active shadow-sm" aria-current="page">
+                <span class="page-link">{{ i }}</span>
+            </li>
+            {% elif i > incomes.number|add:'-3' and i < incomes.number|add:'3' %}
+            <li class="page-item"><a class="page-link" href="?page={{ i }}">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if incomes.has_next %}
+        <li class="page-item">
+            <a class="page-link shadow-sm" href="?page={{ incomes.next_page_number }}" aria-label="Next">
+                <span aria-hidden="true">التالي &raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">التالي</span></li>
+        {% endif %}
+
+    </ul>
+</nav>
+<div class="text-center text-muted small mt-2">
+    عرض الصفحة {{ incomes.number }} من أصل {{ incomes.paginator.num_pages }}
+</div>
+{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

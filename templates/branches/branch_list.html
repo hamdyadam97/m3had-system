@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}قائمة الفروع - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-building"></i> إدارة الفروع</h2>
+    {% if user.is_superuser or user.user_type == 'admin' %}
+<a href="{% url 'branches:branch_add' %}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> إضافة فرع جديد
+    </a>
+    {% endif %}
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>كود الفرع</th>
+                        <th>اسم الفرع</th>
+                        <th>رقم الهاتف</th>
+                        <th>الهدف الشهري</th>
+                        <th>الهدف اليومي</th>
+                        <th>الحالة</th>
+                        <th>تاريخ الإنشاء</th>
+                        <th class="text-center">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for branch in branches %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><span class="badge bg-secondary">{{ branch.code }}</span></td>
+                        <td><strong>{{ branch.name }}</strong></td>
+                        <td>{{ branch.phone|default:"---" }}</td>
+                        <td>{{ branch.monthly_target|floatformat:2 }} ج.م</td>
+                        <td>
+                            <span class="text-primary fw-bold">
+                                {{ branch.get_daily_target|floatformat:2 }} ج.م
+                            </span>
+                        </td>
+                        <td>
+                            {% if branch.is_active %}
+                            <span class="badge bg-success"><i class="fas fa-check-circle"></i> نشط</span>
+                            {% else %}
+                            <span class="badge bg-danger"><i class="fas fa-times-circle"></i> غير نشط</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ branch.created_at|date:"Y-m-d" }}</td>
+                        <td class="text-center">
+                            <div class="btn-group" role="group">
+                                <a href="{% url 'branches:branch_detail' branch.pk %}" class="btn btn-sm btn-outline-info" title="تفاصيل">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                {% if user.is_superuser or user.user_type == 'admin' %}
+                                <a href="{% url 'branches:branch_edit' branch.pk %}" class="btn btn-sm btn-outline-warning" title="تعديل">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-city fa-3x text-muted mb-3"></i>
+                            <p class="lead text-muted">لا توجد فروع مسجلة حالياً</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

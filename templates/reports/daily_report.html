@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}التقرير اليومي - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-calendar-day"></i> التقرير اليومي</h2>
+    <form method="get" class="d-flex">
+        <input type="date" name="date" class="form-control me-2" value="{{ date|date:'Y-m-d' }}">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-search"></i> عرض
+        </button>
+    </form>
+</div>
+
+<!-- إحصائيات اليوم -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">إجمالي الإيرادات</h6>
+                        <h3 class="mb-0">{{ total_income|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">إجمالي المصروفات</h6>
+                        <h3 class="mb-0">{{ total_expenses|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-wallet fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">الصافي</h6>
+                        <h3 class="mb-0">{{ net_amount|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تفاصيل الإيرادات -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> تفاصيل الإيرادات</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>الطالب</th>
+                                <th>الدورة</th>
+                                <th>النوع</th>
+                                <th>المبلغ</th>
+                                <th>طريقة الدفع</th>
+                                <th>مكان الدفع</th>
+                                <th>الموظف</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for income in incomes %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ income.student.full_name }}</td>
+                                <td>{{ income.course.name }}</td>
+                                <td>
+                                    <span class="badge {% if income.income_type == 'registration' %}bg-success{% else %}bg-info{% endif %}">
+                                        {{ income.get_income_type_display }}
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success">{{ income.amount|floatformat:2 }}</td>
+                                <td>{{ income.get_payment_method_display }}</td>
+                                <td>{{ income.get_payment_location_display }}</td>
+                                <td>{{ income.collected_by.get_full_name|default:income.collected_by.username }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p>لا يوجد إيرادات لهذا اليوم</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تفاصيل المصروفات -->
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-wallet"></i> تفاصيل المصروفات</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>الفئة</th>
+                                <th>الوصف</th>
+                                <th>المبلغ</th>
+                                <th>رقم الإيصال</th>
+                                <th>الموظف</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for expense in expenses %}
+                            <tr>
+                                <td>{{ forloop.counter }}</td>
+                                <td>{{ expense.get_category_display }}</td>
+                                <td>{{ expense.description }}</td>
+                                <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }}</td>
+                                <td>{{ expense.receipt_number|default:"-" }}</td>
+                                <td>{{ expense.created_by.get_full_name|default:expense.created_by.username }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p>لا يوجد مصروفات لهذا اليوم</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

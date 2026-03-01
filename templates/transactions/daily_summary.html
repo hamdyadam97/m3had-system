@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+
+{% block title %}الملخص اليومي - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<ul class="nav nav-tabs mb-4">
+    <li class="nav-item">
+        <a class="nav-link " href="{% url 'transactions:income_list' %}">الإيرادات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'transactions:expense_list' %}">المصروفات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link active" href="{% url 'transactions:daily_summary' %}">الملخص اليومي</a>
+    </li>
+</ul>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-calendar-day"></i> الملخص اليومي</h2>
+    <span class="text-muted">{{ date|date:"Y-m-d" }}</span>
+</div>
+
+<!-- إحصائيات اليوم -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">إجمالي الإيرادات</h6>
+                        <h3 class="mb-0">{{ today_income|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">إجمالي المصروفات</h6>
+                        <h3 class="mb-0">{{ today_expenses|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-wallet fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card success">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">الصافي</h6>
+                        <h3 class="mb-0">{{ today_net|floatformat:2 }}</h3>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card info">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">نسبة الإنجاز</h6>
+                        <h3 class="mb-0">{{ achievement_percentage|default:0 }}%</h3>
+                    </div>
+                    <i class="fas fa-percentage fa-2x opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- تفاصيل الإيرادات -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-money-bill-wave"></i> تفاصيل الإيرادات</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>إيرادات التسجيل ({{ registrations_count|default:0 }})</span>
+                    <span class="badge bg-success">{{ registration_income|default:0|floatformat:2 }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>إيرادات التحصيل ({{ installments_count|default:0 }})</span>
+                    <span class="badge bg-info">{{ installment_income|default:0|floatformat:2 }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="fw-bold">الإجمالي</span>
+                    <span class="badge bg-primary">{{ today_income|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-credit-card"></i> حسب طريقة الدفع</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span><i class="fas fa-money-bill text-success"></i> كاش</span>
+                    <span class="badge bg-success">{{ cash_income|default:0|floatformat:2 }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span><i class="fas fa-credit-card text-info"></i> فيزا</span>
+                    <span class="badge bg-info">{{ visa_income|default:0|floatformat:2 }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span><i class="fas fa-university text-warning"></i> تحويل بنكي</span>
+                    <span class="badge bg-warning">{{ bank_income|default:0|floatformat:2 }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- حسب مكان الدفع -->
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-map-marker-alt"></i> حسب مكان الدفع</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 text-center border-end">
+                        <h6 class="text-muted">حضوري</h6>
+                        <h4 class="text-primary">{{ in_person_income|default:0|floatformat:2 }} ج.م</h4>
+                    </div>
+                    <div class="col-md-6 text-center">
+                        <h6 class="text-muted">عن بعد</h6>
+                        <h4 class="text-info">{{ remote_income|default:0|floatformat:2 }} ج.م</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
