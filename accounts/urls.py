@@ -12,4 +12,7 @@ urlpatterns = [
     path('login/', auth_views.LoginView.as_view(template_name='accounts/login.html'), name='login'),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
     path('profile/', views.profile, name='profile'),
+    path('export/users/excel/', views.export_users_excel, name='export_users_excel'),
+    path('export/users/pdf/', views.export_users_pdf, name='export_users_pdf'),
+    path('import/users/excel/', views.import_users_excel, name='import_users_excel'),
 ]

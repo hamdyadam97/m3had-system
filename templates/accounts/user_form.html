@@ -1,74 +1,93 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card border-0 shadow">
-            <div class="card-header bg-primary text-white py-3">
-                <h5 class="mb-0">{{ title }}</h5>
+    <div class="col-md-9">
+        <div class="card border-0 shadow-lg rounded-4">
+            <div class="card-header {% if user_obj %}bg-info{% else %}bg-primary{% endif %} text-white py-3 rounded-top-4">
+                <h5 class="mb-0 text-center">
+                    <i class="fas {% if user_obj %}fa-user-edit{% else %}fa-user-plus{% endif %} me-2"></i>
+                    {{ title }}
+                </h5>
             </div>
+
             <div class="card-body p-4">
                 <form method="post" novalidate>
                     {% csrf_token %}
-                    <div class="row g-3">
+                    <div class="row g-4">
+
                         <div class="col-md-6">
                             <label class="form-label fw-bold">اسم المستخدم</label>
-                            {{ form.username }}
-                            {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors }}</div>{% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">نوع المستخدم</label>
-                            {{ form.user_type }}
-                        </div>
-<div class="col-md-12 mt-3">
-    <label class="fw-bold text-primary">رتبة الموظف (الصلاحيات الجاهزة):</label>
-    {{ form.groups }}
-    <div class="small text-muted mt-1">بمجرد اختيار "محاسب" مثلاً، سيحصل المستخدم على كافة صلاحيات الحسابات.</div>
-</div>
-                        <div class="col-md-12">
-                            <label class="form-label fw-bold">البريد الإلكتروني</label>
-                            {{ form.email }}
-                            {% if form.email.errors %}<div class="text-danger small">{{ form.email.errors }}</div>{% endif %}
-                            <small class="text-muted small">ضروري لاستعادة الحساب والتواصل</small>
+                            {% if user_obj %}
+                                <div class="form-control bg-light border-dashed d-flex align-items-center justify-content-between">
+                                    <span class="fw-bold text-dark">{{ user_obj.username }}</span>
+                                    <i class="fas fa-lock text-muted small"></i>
+                                </div>
+                            {% else %}
+                                {{ form.username }}
+                                {% if form.username.errors %}<div class="text-danger small">{{ form.username.errors }}</div>{% endif %}
+                            {% endif %}
                         </div>
 
-                        {% if not user_obj %}
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">كلمة المرور</label>
-                            {{ form.password1 }}
-                            {% if form.password1.errors %}<div class="text-danger small">{{ form.password1.errors }}</div>{% endif %}
+                            <label class="form-label fw-bold">نوع الحساب</label>
+                            {{ form.user_type }}
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">تأكيد كلمة المرور</label>
-                            {{ form.password2 }}
-                            {% if form.password2.errors %}<div class="text-danger small">{{ form.password2.errors }}</div>{% endif %}
-                        </div>
-                        {% endif %}
 
                         <div class="col-md-6">
                             <label class="form-label fw-bold">الاسم الأول</label>
                             {{ form.first_name }}
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">الاسم الأخير</label>
+                            <label class="form-label fw-bold">اسم العائلة</label>
                             {{ form.last_name }}
                         </div>
 
-                        <div class="col-md-12" id="managed_branches_section" style="display:none;">
-                            <label class="form-label fw-bold text-primary">الفروع المسئول عنها (للمدير الإقليمي)</label>
-                            {{ form.managed_branches }}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">البريد الإلكتروني</label>
+                            {{ form.email }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">رقم الجوال</label>
+                            {{ form.phone }}
                         </div>
 
-                        <div class="col-md-12" id="branch_section">
-                            <label class="form-label fw-bold">الفرع (للموظفين ومديري الفروع)</label>
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold text-primary">الفرع المرتبط</label>
                             {{ form.branch }}
                         </div>
 
+                        {% if not user_obj %}
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-danger">كلمة المرور</label>
+                            {{ form.password1 }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-danger">تأكيد كلمة المرور</label>
+                            {{ form.password2 }}
+                        </div>
+                        {% endif %}
+
+                        {% if user_obj %}
+                        <div class="col-12 mt-2">
+                            <div class="p-3 rounded-3 border d-flex align-items-center justify-content-between bg-light">
+                                <div>
+                                    <h6 class="fw-bold mb-1">حالة الحساب</h6>
+                                    <p class="text-muted small mb-0">تعطيل الحساب يمنع الموظف من الدخول.</p>
+                                </div>
+                                <div class="form-check form-switch scale-150">
+                                    {{ form.is_active }}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                     </div>
 
-                    <hr class="my-4">
-                    <div class="d-flex justify-content-between">
-                        <button type="submit" class="btn btn-success px-5">حفظ البيانات</button>
-                        <a href="{% url 'accounts:user_list' %}" class="btn btn-light">إلغاء</a>
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-5">
+                        <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary px-4">إلغاء</a>
+                        <button type="submit" class="btn {% if user_obj %}btn-info{% else %}btn-primary{% endif %} px-5 text-white">
+                            {% if user_obj %}تحديث البيانات{% else %}إنشاء الحساب{% endif %}
+                        </button>
                     </div>
                 </form>
             </div>
@@ -76,24 +95,8 @@
     </div>
 </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const userTypeField = document.querySelector('[name="user_type"]');
-        const managedSection = document.getElementById('managed_branches_section');
-        const branchSection = document.getElementById('branch_section');
-
-        function toggleSections() {
-            if (userTypeField.value === 'regional_manager') {
-                managedSection.style.display = 'block';
-                branchSection.style.display = 'none';
-            } else {
-                managedSection.style.display = 'none';
-                branchSection.style.display = 'block';
-            }
-        }
-
-        userTypeField.addEventListener('change', toggleSections);
-        toggleSections();
-    });
-</script>
+<style>
+    .border-dashed { border-style: dashed !important; }
+    .scale-150 .form-check-input { transform: scale(1.3); cursor: pointer; }
+</style>
 {% endblock %}

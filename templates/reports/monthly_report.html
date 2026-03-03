@@ -3,6 +3,20 @@
 {% block title %}التقرير الشهري - نظام إدارة المعاهد{% endblock %}
 
 {% block content %}
+<ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded shadow-sm">
+    <li class="nav-item">
+        <a class="nav-link {% if 'daily' in request.path %}active{% endif %}" href="{% url 'reports:daily_report' %}"><i class="fas fa-calendar-day"></i> اليومي</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if 'monthly' in request.path %}active{% endif %}" href="{% url 'reports:monthly_report' %}"><i class="fas fa-calendar-alt"></i> الشهري</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if 'courses' in request.path %}active{% endif %}" href="{% url 'reports:courses_report' %}"><i class="fas fa-graduation-cap"></i> الدورات</a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {% if 'employees' in request.path %}active{% endif %}" href="{% url 'reports:employees_report' %}"><i class="fas fa-users"></i> الموظفين</a>
+    </li>
+</ul>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-calendar-alt"></i> التقرير الشهري</h2>
     <form method="get" class="d-flex">

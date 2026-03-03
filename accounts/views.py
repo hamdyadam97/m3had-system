@@ -1,9 +1,14 @@
+from datetime import date
 from django.contrib.auth.models import Group
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
+import pandas as pd
+from django.http import HttpResponse
+from django.shortcuts import redirect
 from django.contrib import messages
+from reports.views import export_to_pdf
 from .models import User
-from .forms import UserCreateForm # سأعطيك كود الفورم أيضاً
+from .forms import UserCreateForm, UserUpdateForm  # سأعطيك كود الفورم أيضاً
 
 @login_required
 def profile(request):
@@ -54,20 +59,26 @@ def user_create(request):
         form = UserCreateForm()
     return render(request, 'accounts/user_form.html', {'form': form, 'title': 'إضافة مستخدم جديد'})
 
-# 3. تعديل بيانات مستخدم
+
 @login_required
 @user_passes_test(admin_only)
 def user_edit(request, pk):
     user_obj = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
-        form = UserCreateForm(request.POST, instance=user_obj)
+        form = UserUpdateForm(request.POST, instance=user_obj)  # هنا صح
         if form.is_valid():
             form.save()
             messages.success(request, 'تم تحديث بيانات المستخدم.')
             return redirect('accounts:user_list')
     else:
-        form = UserCreateForm(instance=user_obj)
-    return render(request, 'accounts/user_form.html', {'form': form, 'title': 'تعديل مستخدم', 'user_obj': user_obj})
+        # التعديل هنا: استخدم UserUpdateForm بدلاً من UserCreateForm
+        form = UserUpdateForm(instance=user_obj)
+
+    return render(request, 'accounts/user_form.html', {
+        'form': form,
+        'title': 'تعديل مستخدم',
+        'user_obj': user_obj
+    })
 
 # 4. تفعيل / تعطيل مستخدم (Soft Toggle)
 @login_required
@@ -87,3 +98,91 @@ def user_toggle_status(request, pk):
 @login_required
 def user_profile(request):
     return render(request, 'accounts/user_profile.html', {'user': request.user})
+
+
+
+# --- تصدير الموظفين إلى Excel ---
+@login_required
+def export_users_excel(request):
+    # جلب البيانات الأساسية للموظفين
+    users = User.objects.all().values(
+        'username', 'first_name', 'last_name', 'email', 'user_type', 'branch__name', 'phone', 'is_active'
+    )
+    df = pd.DataFrame(list(users))
+
+    # تحسين المسميات للعربية
+    df.rename(columns={
+        'username': 'اسم المستخدم',
+        'first_name': 'الاسم الأول',
+        'last_name': 'اسم العائلة',
+        'email': 'البريد الإلكتروني',
+        'user_type': 'نوع الحساب',
+        'branch__name': 'الفرع',
+        'phone': 'الهاتف',
+        'is_active': 'الحالة'
+    }, inplace=True)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=staff_list.xlsx'
+
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+    return response
+
+
+# --- تصدير الموظفين إلى PDF ---
+@login_required
+def export_users_pdf(request):
+    users = User.objects.all().select_related('branch')
+    context = {
+        'staff_list': users,
+        'title': 'تقرير طاقم العمل والمديرين',
+        'date': date.today(),
+        'user': request.user,
+        'type': 'staff_report'  # لتمييزه في القالب الشامل
+    }
+    # نستخدم نفس الدالة الموحدة اللي عملناها قبل كدا
+    return export_to_pdf(request, context, 'reports/pdf_template.html', "staff_report")
+
+
+@login_required
+def import_users_excel(request):
+    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+        from django.core.exceptions import PermissionDenied
+        raise PermissionDenied
+
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        excel_file = request.FILES['excel_file']
+        try:
+            df = pd.read_excel(excel_file)
+            success_count = 0
+
+            for _, row in df.iterrows():
+                username = str(row['اسم المستخدم']).strip()
+                # التأكد أن المستخدم غير موجود مسبقاً
+                if not User.objects.filter(username=username).exists():
+                    user = User.objects.create_user(
+                        username=username,
+                        email=row.get('البريد الإلكتروني', ''),
+                        password='Password123',  # كلمة سر افتراضية
+                        first_name=row.get('الاسم الأول', ''),
+                        last_name=row.get('اسم العائلة', ''),
+                        phone=str(row.get('الهاتف', '')),
+                        user_type=row.get('نوع الحساب', 'employee')  # القيمة الافتراضية
+                    )
+                    # ربط بالفرع إذا كان موجوداً
+                    branch_name = row.get('الفرع')
+                    if branch_name:
+                        from branches.models import Branch
+                        branch = Branch.objects.filter(name=branch_name).first()
+                        if branch:
+                            user.branch = branch
+                            user.save()
+
+                    success_count += 1
+
+            messages.success(request, f'تم استيراد {success_count} موظف بنجاح! كلمة السر الافتراضية: Password123')
+        except Exception as e:
+            messages.error(request, f'خطأ في الملف: {str(e)}')
+
+    return redirect('accounts:user_list')

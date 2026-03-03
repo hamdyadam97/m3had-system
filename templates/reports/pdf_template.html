@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            margin: 1cm;
+            size: A4;
+        }
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            direction: rtl;
+            text-align: right;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        /* الهيدر */
+        .header-container {
+            border-bottom: 3px solid #1a237e;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .title-section h1 {
+            color: #1a237e;
+            margin: 0;
+            font-size: 22px;
+        }
+        .date-badge {
+            display: inline-block;
+            background-color: #f5f5f5;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            border: 1px solid #ddd;
+            margin-top: 5px;
+        }
+
+        /* مربعات الإحصائيات السريعة */
+        .summary-box {
+            width: 100%;
+            margin-bottom: 20px;
+            background-color: #1a237e;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+        }
+
+        /* الجداول */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th {
+            background-color: #1a237e;
+            color: white;
+            padding: 10px 5px;
+            font-size: 12px;
+            border: 1px solid #1a237e;
+        }
+        td {
+            border: 1px solid #e0e0e0;
+            padding: 8px 5px;
+            text-align: center;
+            font-size: 10px;
+        }
+        tr:nth-child(even) { background-color: #f8f9fa; }
+
+        .amount-cell { font-weight: bold; color: #2e7d32; }
+        .expense-amount { color: #c62828 !important; }
+
+        /* التذييل */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-size: 9px;
+            color: #777;
+        }
+        .footer-table { width: 100%; }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <div class="title-section">
+            <h1>{{ title }}</h1>
+            <div class="date-badge">
+                {% if start_date %}
+                    الفترة من: {{ start_date }} إلى: {{ end_date }}
+                {% else %}
+                    التاريخ: {{ date }}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if total_sum %}
+    <div class="summary-box">
+        إجمالي القيمة: <strong>{{ total_sum }}</strong> جنيه مصري
+    </div>
+    {% endif %}
+
+    <table>
+        <thead>
+            {% if type == 'income' %}
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th>الطالب</th>
+                    <th>الدورة</th>
+                    <th>النوع</th>
+                    <th>طريقة الدفع</th>
+                    <th>المبلغ</th>
+                </tr>
+            {% elif type == 'expense' %}
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th>الفئة</th>
+                    <th>الوصف</th>
+                    <th>رقم الإيصال</th>
+                    <th>المبلغ</th>
+                </tr>
+            {% elif type == 'employees' %}
+                <tr>
+                    <th>الموظف</th>
+                    <th>التسجيلات</th>
+                    <th>التحصيلات</th>
+                    <th>كاش</th>
+                    <th>فيزا</th>
+                    <th>بنك</th>
+                    <th>الإجمالي</th>
+                </tr>
+            {% elif type == 'courses' %}
+                <tr>
+                    <th>الدورة</th>
+                    <th>النوع</th>
+                    <th>تسجيلات اليوم</th>
+                    <th>إيراد اليوم</th>
+                    <th>إيراد الشهر</th>
+                    <th>إجمالي الإيراد</th>
+                </tr>
+            {% endif %}
+        </thead>
+        <tbody>
+            {% if type == 'income' %}
+                {% for item in data %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.student.full_name }}</td>
+                    <td>{{ item.course.name }}</td>
+                    <td>{{ item.get_income_type_display }}</td>
+                    <td>{{ item.get_payment_method_display }}</td>
+                    <td class="amount-cell">{{ item.amount }}</td>
+                </tr>
+                {% endfor %}
+            {% elif type == 'expense' %}
+                {% for item in data %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ item.get_category_display }}</td>
+                    <td style="text-align: right;">{{ item.description }}</td>
+                    <td>{{ item.receipt_number|default:"-" }}</td>
+                    <td class="amount-cell expense-amount">{{ item.amount }}</td>
+                </tr>
+                {% endfor %}
+            {% elif type == 'employees' %}
+                {% for item in employees_data %}
+                <tr>
+                    <td>{{ item.employee.get_full_name|default:item.employee.username }}</td>
+                    <td>{{ item.registrations_count }}</td>
+                    <td>{{ item.installments_count }}</td>
+                    <td>{{ item.cash_collected }}</td>
+                    <td>{{ item.visa_collected }}</td>
+                    <td>{{ item.bank_collected }}</td>
+                    <td class="amount-cell">{{ item.total_collected }}</td>
+                </tr>
+                {% endfor %}
+
+            {% elif type == 'courses' %}
+                {% for item in courses_data %}
+                <tr>
+                    <td>{{ item.course.name }}</td>
+                    <td>{{ item.course.get_course_type_display }}</td>
+                    <td>{{ item.daily_registrations }}</td>
+                    <td>{{ item.daily_income }}</td>
+                    <td>{{ item.monthly_income }}</td>
+                    <td class="amount-cell">{{ item.total_income }}</td>
+                </tr>
+
+                {% endfor %}
+        </tbody>
+        {% elif type == 'branches_report' %}
+        <tr>
+            <th style="width: 10%;">كود الفرع</th>
+            <th style="width: 30%;">اسم الفرع</th>
+            <th style="width: 20%;">رقم الهاتف</th>
+            <th style="width: 20%;">الهدف الشهري</th>
+            <th style="width: 20%;">تاريخ الإنشاء</th>
+        </tr>
+    <tbody>
+        {% for branch in branches_list %}
+        <tr>
+            <td style="background-color: #f0f2f5; font-weight: bold;">{{ branch.code }}</td>
+            <td style="text-align: right; padding-right: 15px;">{{ branch.name }}</td>
+            <td>{{ branch.phone|default:"---" }}</td>
+            <td class="amount-cell">{{ branch.get_current_month_target }}</td>
+            <td>{{ branch.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+        {% elif type == 'staff_report' %}
+    <thead>
+        <tr>
+            <th>الاسم الكامل</th>
+            <th>نوع الحساب</th>
+            <th>الفرع</th>
+            <th>الهاتف</th>
+            <th>الحالة</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for u in staff_list %}
+        <tr>
+            <td style="text-align: right; font-weight: bold;">{{ u.get_full_name|default:u.username }}</td>
+            <td>{{ u.get_user_type_display }}</td>
+            <td>{{ u.branch.name|default:"كل الفروع" }}</td>
+            <td>{{ u.phone|default:"-" }}</td>
+            <td>
+                {% if u.is_active %} نشط {% else %} معطل {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+{% endif %}
+    </table>
+
+    <div class="footer">
+        <table class="footer-table">
+            <tr>
+                <td style="text-align: right; border: none;">طبع بواسطة: {{ user.get_full_name|default:user.username }}</td>
+                <td style="text-align: center; border: none;">نظام إدارة المعاهد - تقرير رسمي</td>
+                <td style="text-align: left; border: none;">تاريخ الطباعة: {% now "Y-m-d H:i" %}</td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

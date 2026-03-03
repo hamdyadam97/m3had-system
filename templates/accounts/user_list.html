@@ -1,11 +1,36 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2 class="fw-bold"><i class="fas fa-users-cog text-primary"></i> إدارة الطاقم</h2>
-    <a href="{% url 'accounts:user_create' %}" class="btn btn-primary shadow-sm">
-        <i class="fas fa-user-plus"></i> إضافة موظف جديد
-    </a>
+
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+
+    <h2 class="fw-bold m-0">
+        <i class="fas fa-users-cog text-primary"></i> إدارة الطاقم
+    </h2>
+
+    <div class="d-flex gap-2">
+        <div class="btn-group shadow-sm">
+            <button type="button" class="btn btn-outline-info" onclick="document.getElementById('userExcelInput').click()" title="استيراد من اكسل">
+                <i class="fas fa-file-import"></i> استيراد
+            </button>
+
+            <a href="{% url 'accounts:export_users_pdf' %}" class="btn btn-outline-danger" title="تصدير PDF">
+                <i class="fas fa-file-pdf"></i> PDF
+            </a>
+            <a href="{% url 'accounts:export_users_excel' %}" class="btn btn-outline-success" title="تصدير اكسل">
+                <i class="fas fa-file-excel"></i> Excel
+            </a>
+        </div>
+
+        <a href="{% url 'accounts:user_create' %}" class="btn btn-primary shadow-sm px-4">
+            <i class="fas fa-user-plus"></i> إضافة موظف جديد
+        </a>
+    </div>
 </div>
+
+<form action="{% url 'accounts:import_users_excel' %}" method="post" enctype="multipart/form-data" id="importUserForm" class="d-none">
+    {% csrf_token %}
+    <input type="file" name="excel_file" id="userExcelInput" onchange="document.getElementById('importUserForm').submit()">
+</form>
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
