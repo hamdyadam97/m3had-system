@@ -12,20 +12,23 @@ class Branch(models.Model):
     is_active = models.BooleanField(default=True, verbose_name='نشط')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
 
-    def get_current_month_target(self):
-        """جلب هدف الفرع للشهر الحالي"""
-        today = date.today()
-        target_obj = self.targets.filter(year=today.year, month=today.month).first()
-        return target_obj.amount if target_obj else 0
-
-    @property
-    def get_current_month_daily_target(self):
-        """يحسب الهدف اليومي للشهر الحالي تلقائياً"""
-        target = self.get_current_month_target()
-        return target / 30 if target else 0
-
+    # هذا السطر هو المسؤول عن ظهور الاسم بدلاً من Branch object (1)
     def __str__(self):
         return self.name
+
+    def get_current_month_target(self):
+        """جلب مبلغ الهدف للشهر الحالي"""
+        today = date.today()
+        target_obj = self.targets.filter(year=today.year, month=today.month).first()
+        return float(target_obj.amount) if target_obj else 0.0
+
+    @property
+    def get_daily_target(self):
+        """يحسب الهدف اليومي (الشهري ÷ 30)"""
+        monthly_target = self.get_current_month_target()
+        if monthly_target > 0:
+            return monthly_target / 30
+        return 0.0
 
 
 class BranchTarget(models.Model):
@@ -49,6 +52,3 @@ class BranchTarget(models.Model):
     def __str__(self):
         return f"هدف {self.branch.name} - {self.month}/{self.year}"
 
-    def get_daily_target(self):
-        """الهدف اليومي لهذا الشهر المحدد"""
-        return self.amount / 30

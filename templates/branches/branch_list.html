@@ -7,9 +7,9 @@
     <h2 class="text-primary m-0"><i class="fas fa-city"></i> إدارة الفروع</h2>
 
     <div class="btn-group shadow-sm">
-        <a href="{% url 'branches:branch_add' %}" class="btn btn-primary">
-            <i class="fas fa-plus-circle"></i> فرع جديد
-        </a>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addBranchModal">
+    <i class="fas fa-plus-circle"></i> فرع جديد
+</button>
 
         <a href="{% url 'branches:export_branches_pdf' %}" class="btn btn-danger">
             <i class="fas fa-file-pdf"></i> تصدير PDF
@@ -48,12 +48,25 @@
                         <td><span class="badge bg-secondary">{{ branch.code }}</span></td>
                         <td><strong>{{ branch.name }}</strong></td>
                         <td>{{ branch.phone|default:"---" }}</td>
-                        <td>{{ branch.monthly_target|floatformat:2 }} ج.م</td>
-                        <td>
-                            <span class="text-primary fw-bold">
-                                {{ branch.get_daily_target|floatformat:2 }} ج.م
-                            </span>
-                        </td>
+<td>
+    {% with current_target=branch.get_current_month_target %}
+        {% if current_target > 0 %}
+            <span class="fw-bold text-dark">{{ current_target|floatformat:2 }} ج.م</span>
+        {% else %}
+            <button type="button" class="btn btn-sm btn-outline-danger border-dashed"
+                    data-bs-toggle="modal"
+                    data-bs-target="#addTargetModal"
+                    data-branch-id="{{ branch.id }}"
+                    data-branch-name="{{ branch.name }}">
+                <i class="fas fa-plus-circle"></i> حدد هدفاً
+            </button>
+        {% endif %}
+    {% endwith %}
+</td>                       <td>
+    <span class="text-primary fw-bold">
+        {{ branch.get_daily_target|floatformat:2 }} ج.م
+    </span>
+</td>
                         <td>
                             {% if branch.is_active %}
                             <span class="badge bg-success"><i class="fas fa-check-circle"></i> نشط</span>
@@ -88,4 +101,46 @@
         </div>
     </div>
 </div>
+{% include 'branches/branch_form.html' %}
+{% include 'branches/target_modal.html' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. فتح المودال إذا كان هناك طلب "إضافة آخر"
+        const urlParams = new URLSearchParams(window.location.search);
+        // 2. أو إذا أرسل الـ View متغير show_modal (في حالة الخطأ)
+        const showModalError = "{{ show_modal }}";
+
+        if (urlParams.has('open_modal') || showModalError === "True") {
+            var myModal = new bootstrap.Modal(document.getElementById('addBranchModal'));
+            myModal.show();
+        }
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const addTargetModal = document.getElementById('addTargetModal');
+
+        // 1. تمرير البيانات للمودال عند الضغط على الزرار في الجدول
+        addTargetModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            const branchId = button.getAttribute('data-branch-id');
+            const branchName = button.getAttribute('data-branch-name');
+
+            addTargetModal.querySelector('#modalBranchId').value = branchId;
+            addTargetModal.querySelector('#modalBranchName').textContent = branchName;
+        });
+
+        // 2. فتح المودال تلقائياً بعد إضافة فرع جديد (عبر الـ URL Params)
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('open_target_modal')) {
+            const myModal = new bootstrap.Modal(addTargetModal);
+
+            // تعبئة البيانات من الرابط
+            document.getElementById('modalBranchId').value = params.get('branch_id');
+            document.getElementById('modalBranchName').textContent = params.get('branch_name');
+
+            myModal.show();
+        }
+    });
+</script>
 {% endblock %}

@@ -1,9 +1,12 @@
 from django import forms
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import  get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.shortcuts import render
+from django.urls import reverse
 
+from .forms import BranchForm, BranchTargetForm
 from reports.views import export_to_pdf
-from .models import Branch, BranchTarget
+from .models import  BranchTarget
 from datetime import date
 
 @login_required
@@ -13,8 +16,8 @@ def branch_list(request):
         branches = Branch.objects.filter(is_active=True)
     else:
         branches = Branch.objects.filter(id=request.user.branch_id) if request.user.branch else Branch.objects.none()
-    
-    return render(request, 'branches/branch_list.html', {'branches': branches})
+    branch_form = BranchForm()
+    return render(request, 'branches/branch_list.html', {'branches': branches, 'branch_form': branch_form})
 
 
 @login_required
@@ -30,11 +33,6 @@ def branch_detail(request, pk):
     return render(request, 'branches/branch_detail.html', {'branch': branch})
 
 
-from django.shortcuts import render, redirect
-from django.contrib import messages
-from .forms import BranchForm, BranchTargetForm
-
-
 @login_required
 def branch_add(request):
     # السماح فقط للمديرين بإضافة فروع
@@ -44,15 +42,28 @@ def branch_add(request):
 
     if request.method == 'POST':
         form = BranchForm(request.POST)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'تم إنشاء الفرع بنجاح!')
-            return redirect('branches:branch_list')
-        else:
-            messages.error(request, 'يرجى تصحيح الأخطاء أدناه.')
-    else:
-        form = BranchForm()
+        action = request.POST.get('action')  # استلام قيمة الزر المضغوط من الـ Modal
 
+        if form.is_valid():
+            branch = form.save()
+            messages.success(request, 'تم إنشاء الفرع بنجاح!')
+
+            # إذا كان الضغط على زر "حفظ وإضافة آخر"
+            if action == 'add_another':
+                # بنرجعه لصفحة القائمة مع بارامتر يخلي الـ Modal يفتح تلقائياً
+                return redirect(request.META.get('HTTP_REFERER', 'branches:branch_list') + '?open_modal=true')
+
+            # الحالة الطبيعية: حفظ وخروج
+            return redirect(
+                f"{reverse('branches:branch_list')}?open_target_modal=true&branch_id={branch.id}&branch_name={branch.name}")
+        else:
+            # في حال وجود أخطاء والـ Modal مفتوح، يفضل إرسال رسالة خطأ واضحة
+            messages.error(request, 'يرجى تصحيح الأخطاء أدناه.')
+            # هنا بنرجعه للقائمة عشان يفتح الـ Modal ويشوف الأخطاء (أو يفضل استخدام AJAX مستقبلاً)
+            return redirect('branches:branch_list')
+
+    # في حالة الـ GET (لو دخل على الرابط مباشرة مش عن طريق الـ Modal)
+    form = BranchForm()
     return render(request, 'branches/branch_form.html', {'form': form, 'title': 'إضافة فرع جديد'})
 
 
@@ -88,25 +99,35 @@ def branch_edit(request, pk):
 
 @login_required
 def target_add(request):
-    branch_id = request.GET.get('branch')  # بنجيب الـ ID من الرابط (الـ GET)
-    branch = get_object_or_404(Branch, id=branch_id)
-
     if request.method == 'POST':
+        # في حالة الـ POST، بناخد الـ branch_id من الفورم نفسه (المودال)
+        branch_id = request.POST.get('branch')
+        branch = get_object_or_404(Branch, id=branch_id)
+
         form = BranchTargetForm(request.POST)
         if form.is_valid():
             target = form.save(commit=False)
-            target.branch = branch  # السطر ده هو اللي بيضمن إن الفرع اتسيف صح
+            target.branch = branch
             target.save()
-            messages.success(request, "تم الحفظ بنجاح")
-            return redirect('branches:branch_detail', pk=branch.id)
+            messages.success(request, f"تم حفظ الهدف بنجاح لفرع {branch.name}")
+            return redirect('branches:branch_list')
         else:
-            # لو في خطأ في البيانات اطبعها عشان تعرف ليه مش بتسيف
-            print(form.errors)
-    else:
+            # لو فيه أخطاء (مثلاً الهدف مكرر)
+            for field, errors in form.errors.items():
+                for error in errors:
+                    messages.error(request, f"{error}")
+            return redirect('branches:branch_list')
+
+    # في حالة الـ GET (لو جاي من صفحة منفصلة بـ ?branch=ID)
+    branch_id = request.GET.get('branch')
+    if branch_id:
+        branch = get_object_or_404(Branch, id=branch_id)
         form = BranchTargetForm(initial={'branch': branch, 'year': date.today().year})
         form.fields['branch'].widget = forms.HiddenInput()
+        return render(request, 'branches/target_form.html', {'form': form, 'branch': branch})
 
-    return render(request, 'branches/target_form.html', {'form': form, 'branch': branch})
+    # لو مفيش branch_id خالص دخل يدوي على الرابط
+    return redirect('branches:branch_list')
 
 @login_required
 def target_edit(request, pk):

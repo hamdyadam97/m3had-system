@@ -1,78 +1,56 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
-
-{% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="fas fa-plus-circle"></i> {{ title }}</h4>
+<div class="modal fade" id="addBranchModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>إضافة فرع جديد</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
-                <form method="post" novalidate>
-                    {% csrf_token %}
 
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">اسم الفرع</label>
-                            {{ form.name }}
-                            {% if form.name.errors %}
-                                <div class="text-danger small">{{ form.name.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">كود الفرع</label>
-                            {{ form.code }}
-                            {% if form.code.errors %}
-                                <div class="text-danger small">{{ form.code.errors.0 }}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">رقم الهاتف</label>
-                            {{ form.phone }}
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label fw-bold">البريد الإلكتروني</label>
-                            {{ form.email }}
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">الهدف الشهري (ج.م)</label>
-                        {{ form.monthly_target }}
-                        {% if form.monthly_target.errors %}
-                            <div class="text-danger small">{{ form.monthly_target.errors.0 }}</div>
-                        {% endif %}
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">العنوان</label>
-                        {{ form.address }}
-                    </div>
-
-                    <div class="mb-3 form-check">
-                        {{ form.is_active }}
-                        <label class="form-check-label">فرع نشط حالياً</label>
-                    </div>
-
-                    <hr>
-<div class="d-flex justify-content-between">
-    <button type="submit" class="btn btn-primary px-4">
-        <i class="fas fa-save"></i> حفظ التغييرات
-    </button>
-
-    {% if is_edit %}
-        <a href="{% url 'branches:branch_detail' form.instance.pk %}" class="btn btn-secondary">إلغاء</a>
-    {% else %}
-        <a href="{% url 'branches:branch_list' %}" class="btn btn-secondary">إلغاء</a>
-    {% endif %}
-</div>                </form>
+            <form action="{% url 'branches:branch_add' %}" method="post">
+                {% csrf_token %}
+<div class="modal-body p-4">
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="fw-bold small">اسم الفرع</label>
+            {{ branch_form.name }}
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">كود الفرع</label>
+            {{ branch_form.code }}
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">رقم الهاتف</label>
+            {{ branch_form.phone }}
+        </div>
+        <div class="col-md-6">
+            <label class="fw-bold small">البريد الإلكتروني</label>
+            {{ branch_form.email }}
+        </div>
+        <div class="col-md-12">
+            <label class="fw-bold small">العنوان</label>
+            {{ branch_form.address }}
+        </div>
+        <div class="col-md-12">
+            <div class="form-check form-switch mt-2">
+                {{ branch_form.is_active }}
+                <label class="form-check-label ms-2">فرع نشط حالياً</label>
             </div>
         </div>
     </div>
+</div>                <div class="modal-footer bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">إلغاء</button>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" name="action" value="add_another" class="btn btn-outline-primary">
+                            حفظ وإضافة آخر
+                        </button>
+                        
+                        <button type="submit" name="action" value="save_exit" class="btn btn-primary px-4">
+                            <i class="fas fa-save me-1"></i> حفظ وخروج
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
-{% endblock %}

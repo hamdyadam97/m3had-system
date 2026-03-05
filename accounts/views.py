@@ -26,8 +26,9 @@ def admin_only(user):
 @login_required
 @user_passes_test(admin_only)
 def user_list(request):
-    users = User.objects.select_related('branch').all().order_by('-created_at')
-    return render(request, 'accounts/user_list.html', {'users': users})
+    users = User.objects.all()
+    form = UserCreateForm() # تأكد أن الاسم مطابق لما في الـ HTML
+    return render(request, 'accounts/user_list.html', {'users': users, 'form': form})
 
 # 2. إضافة مستخدم جديد
 @login_required

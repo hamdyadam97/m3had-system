@@ -21,9 +21,9 @@
             </a>
         </div>
 
-        <a href="{% url 'accounts:user_create' %}" class="btn btn-primary shadow-sm px-4">
-            <i class="fas fa-user-plus"></i> إضافة موظف جديد
-        </a>
+       <button type="button" class="btn btn-primary shadow-sm px-4" onclick="openAddUserModal()">
+    <i class="fas fa-user-plus"></i> إضافة موظف جديد
+</button>
     </div>
 </div>
 
@@ -76,8 +76,10 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group">
-                                <a href="{% url 'accounts:user_edit' u.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-edit"></i></a>
-                                <a href="{% url 'accounts:user_toggle_status' u.pk %}" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+<button type="button" class="btn btn-sm btn-outline-primary"
+        onclick="openEditUserModal('{{ u.pk }}', '{{ u.username }}', '{{ u.first_name }}', '{{ u.last_name }}', '{{ u.email }}', '{{ u.phone }}', '{{ u.user_type }}', '{{ u.branch.id|default:"" }}', '{{ u.is_active|lower }}')">
+    <i class="fas fa-edit"></i>
+</button>                                <a href="{% url 'accounts:user_toggle_status' u.pk %}" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
                                     <i class="fas {% if u.is_active %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
                                 </a>
                             </div>
@@ -89,4 +91,67 @@
         </div>
     </div>
 </div>
+{% include 'accounts/user_form.html' %}
+
+<script>
+    // تعريف المتغيرات في نطاق عام (Global) ليراها الزرار
+    let userModal;
+    let userForm;
+    let modalTitle;
+    let passwordFields;
+    let statusField;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // التأكد من أن Bootstrap محمل قبل البدء
+        if (typeof bootstrap !== 'undefined') {
+            const modalElement = document.getElementById('userModal');
+            if (modalElement) {
+                userModal = new bootstrap.Modal(modalElement);
+                userForm = document.getElementById('userForm');
+                modalTitle = document.getElementById('modalTitleText');
+                passwordFields = document.getElementById('passwordFields');
+                statusField = document.getElementById('statusField');
+            }
+        } else {
+            console.error("Bootstrap is not loaded!");
+        }
+    });
+
+    // دالة فتح مودال الإضافة
+    function openAddUserModal() {
+        if (!userForm) return; // حماية في حالة لم يحمل الفورم بعد
+        userForm.reset();
+        // تأكد من الـ URL الصحيح حسب ملف الـ urls.py عندك
+        userForm.action = "{% url 'accounts:user_create' %}";
+        modalTitle.innerText = "إضافة موظف جديد";
+        if (passwordFields) passwordFields.classList.remove('d-none');
+        if (statusField) statusField.classList.add('d-none');
+        userModal.show();
+    }
+
+    // دالة فتح مودال التعديل
+    function openEditUserModal(id, username, fname, lname, email, phone, type, branch, active) {
+        if (!userForm) return;
+        userForm.reset();
+        // تعديل الـ Action ليرسل إلى دالة الـ Edit
+        userForm.action = "/accounts/users/edit/" + id + "/";
+        modalTitle.innerText = `تعديل الموظف: ${username}`;
+
+        // تعبئة البيانات بحذر
+        try {
+            document.getElementsByName('username')[0].value = username;
+            document.getElementsByName('first_name')[0].value = fname;
+            document.getElementsByName('last_name')[0].value = lname;
+            document.getElementsByName('email')[0].value = email;
+            document.getElementsByName('phone')[0].value = phone;
+            document.getElementsByName('user_type')[0].value = type;
+            document.getElementsByName('branch')[0].value = branch;
+            document.getElementsByName('is_active')[0].checked = (active === 'true');
+        } catch (e) { console.error("Error filling form:", e); }
+
+        if (passwordFields) passwordFields.classList.add('d-none');
+        if (statusField) statusField.classList.remove('d-none');
+        userModal.show();
+    }
+</script>
 {% endblock %}

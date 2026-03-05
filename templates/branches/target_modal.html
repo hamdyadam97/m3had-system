@@ -1,0 +1,42 @@
+<div class="modal fade" id="addTargetModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-bullseye me-2"></i>تحديد هدف الفرع</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{% url 'branches:target_add' %}" method="post">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <p class="text-muted small">تحديد الهدف لفرع: <strong id="modalBranchName" class="text-dark"></strong></p>
+
+                    <input type="hidden" name="branch" id="modalBranchId">
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="fw-bold small">السنة</label>
+                            <input type="number" name="year" class="form-control" value="{% now 'Y' %}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="fw-bold small">الشهر</label>
+                            <select name="month" class="form-select">
+                                <option value="{% now 'n' %}" selected>الشهر الحالي ({% now "F" %})</option>
+                                </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="fw-bold small">المبلغ المستهدف</label>
+                            <div class="input-group">
+                                <input type="number" name="amount" class="form-control" step="0.01" placeholder="0.00" required>
+                                <span class="input-group-text">ج.م</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success px-4 text-white">حفظ الهدف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

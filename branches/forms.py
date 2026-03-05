@@ -24,14 +24,6 @@ class BranchForm(forms.ModelForm):
         return code
 
 
-    # Validation مخصص للهدف الشهري
-    def clean_monthly_target(self):
-        target = self.cleaned_data.get('monthly_target')
-        if target <= 0:
-            raise forms.ValidationError("يجب أن يكون الهدف الشهري أكبر من صفر!")
-        return target
-
-
 
 
 
