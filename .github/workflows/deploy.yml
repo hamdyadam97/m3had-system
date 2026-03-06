@@ -19,17 +19,23 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd /var/www/ElmashahedBackend
-            git fetch origin main
-            git reset --hard origin/main
-            source venv/bin/activate
-            pip install -r requirements.txt
-            # لا داعي لـ migrate هنا لأنك ترفع قاعدة جاهزة، لكن يفضل لضمان التوافق
-            python manage.py migrate
-            python manage.py collectstatic --noinput
-            
-            # أهم سطرين لضمان عمل اللوجن بعد رفع القاعدة الجديدة
-            sudo chown www-data:www-data db.sqlite3
-            sudo chmod 664 db.sqlite3
-            
-            sudo systemctl restart gunicorn_mashahed
+                    cd /var/www/m3had-system
+                    git fetch origin main
+                    git reset --hard origin/main
+        
+                    # التأكد من وجود ملف القاعدة في المكان الصحيح (الذي أظهره الـ shell)
+                    # إذا كان الملف في مجلد فرعي، سنقوم بنسخه للمكان المطلوب:
+                    # cp path/to/your/repo/db.sqlite3 /var/www/m3had-system/db.sqlite3
+        
+                    source venv/bin/activate
+                    pip install -r requirements.txt
+        
+                    # تحديث الملفات الثابتة
+                    python manage.py collectstatic --noinput
+        
+                    # الضربة القاضية: ضبط الصلاحيات للملف ليعمل اللوجن
+                    sudo chown www-data:www-data /var/www/m3had-system/db.sqlite3
+                    sudo chmod 664 /var/www/m3had-system/db.sqlite3
+        
+                    # إعادة التشغيل الإجبارية للـ Gunicorn ليرى البيانات الجديدة
+                    sudo systemctl restart gunicorn
