@@ -10,6 +10,45 @@
     </a>
 </div>
 
+<!-- فلتر الحالة -->
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">حالة الدفع</label>
+                <select name="payment_status" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    <option value="overdue" {% if request.GET.payment_status == 'overdue' %}selected{% endif %}>متأخر في السداد</option>
+                    <option value="pending" {% if request.GET.payment_status == 'pending' %}selected{% endif %}>معلق</option>
+                    <option value="paid" {% if request.GET.payment_status == 'paid' %}selected{% endif %}>مدفوع بالكامل</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">الفرع</label>
+                <select name="branch" class="form-select form-select-sm">
+                    <option value="">كل الفروع</option>
+                    {% for branch in branches %}
+                    <option value="{{ branch.id }}" {% if request.GET.branch|add:0 == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-1">طريقة الدفع</label>
+                <select name="payment_method" class="form-select form-select-sm">
+                    <option value="">الكل</option>
+                    <option value="cash" {% if request.GET.payment_method == 'cash' %}selected{% endif %}>كاش</option>
+                    <option value="installment" {% if request.GET.payment_method == 'installment' %}selected{% endif %}>قسط</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-sm btn-outline-primary w-100">
+                    <i class="fas fa-filter"></i> تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body">
         <div class="table-responsive">
@@ -24,15 +63,23 @@
                         <th>السعر</th>
                         <th>المبلغ المدفوع</th>
                         <th>المتبقي</th>
+                        <th>الحالة</th>
                         <th>تاريخ التسجيل</th>
                         <th>الإجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for student in students %}
-                    <tr>
+                    <tr class="{% if student.has_overdue_installments %}table-danger{% endif %}">
                         <td>{{ forloop.counter }}</td>
-                        <td>{{ student.full_name }}</td>
+                        <td>
+                            {{ student.full_name }}
+                            {% if student.has_overdue_installments %}
+                            <span class="badge bg-danger" title="متأخر {{ student.get_overdue_days }} يوم">
+                                <i class="fas fa-exclamation-circle"></i> متأخر
+                            </span>
+                            {% endif %}
+                        </td>
                         <td>{{ student.phone }}</td>
                         <td>{{ student.course.name }}</td>
                         <td>
@@ -40,12 +87,23 @@
                                 {{ student.get_payment_method_display }}
                             </span>
                         </td>
-                        <td>{{ student.total_price|floatformat:2 }}</td>
-                        <td>{{ student.get_total_paid|floatformat:2 }}</td>
+                        <td>{{ student.total_price|floatformat:2 }} ر.س</td>
+                        <td>{{ student.get_total_paid|floatformat:2 }} ر.س</td>
                         <td>
                             <span class="{% if student.get_remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
-                                {{ student.get_remaining_amount|floatformat:2 }}
+                                {{ student.get_remaining_amount|floatformat:2 }} ر.س
                             </span>
+                        </td>
+                        <td>
+                            {% if student.has_overdue_installments %}
+                            <span class="badge bg-danger">متأخر {{ student.get_overdue_days }} يوم</span>
+                            {% elif student.is_fully_paid %}
+                            <span class="badge bg-success">✓ مدفوع</span>
+                            {% elif student.get_total_paid > 0 %}
+                            <span class="badge bg-warning text-dark">جاري الدفع</span>
+                            {% else %}
+                            <span class="badge bg-secondary">غير مدفوع</span>
+                            {% endif %}
                         </td>
                         <td>{{ student.registration_date|date:"Y-m-d" }}</td>
                         <td>
@@ -59,7 +117,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <p>لا يوجد طلاب مسجلين</p>
                         </td>
@@ -67,6 +125,42 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- إحصائيات سريعة -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body text-center">
+                <h5>{{ overdue_count|default:0 }}</h5>
+                <small>طلاب متأخرين</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body text-center">
+                <h5>{{ pending_count|default:0 }}</h5>
+                <small>جاري الدفع</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body text-center">
+                <h5>{{ paid_count|default:0 }}</h5>
+                <small>مدفوع بالكامل</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body text-center">
+                <h5>{{ students|length }}</h5>
+                <small>إجمالي الطلاب</small>
+            </div>
         </div>
     </div>
 </div>

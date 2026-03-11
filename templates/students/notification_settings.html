@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block title %}إعدادات الإشعارات - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-cog text-primary"></i> إعدادات الإشعارات والتذكيرات</h2>
+    <a href="{% url 'students:notification_logs' %}" class="btn btn-outline-info">
+        <i class="fas fa-history"></i> سجل الإشعارات
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <form method="post" class="card shadow-sm">
+            <div class="card-body">
+                {% csrf_token %}
+                
+                <!-- إعدادات البريد الإلكتروني -->
+                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-envelope text-primary"></i> إعدادات البريد الإلكتروني</h5>
+                <div class="row mb-4">
+                    <div class="col-md-12 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.email_enabled }}
+                            <label class="form-check-label">تفعيل إشعارات البريد الإلكتروني</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">خادم البريد (SMTP)</label>
+                        {{ form.email_host }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">منفذ البريد</label>
+                        {{ form.email_port }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">اسم مستخدم البريد</label>
+                        {{ form.email_host_user }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">كلمة مرور البريد</label>
+                        {{ form.email_host_password }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">عنوان المرسل</label>
+                        {{ form.email_from_address }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check mt-4">
+                            {{ form.email_use_tls }}
+                            <label class="form-check-label">استخدام TLS</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- إعدادات واتساب -->
+                <h5 class="border-bottom pb-2 mb-3"><i class="fab fa-whatsapp text-success"></i> إعدادات واتساب</h5>
+                <div class="row mb-4">
+                    <div class="col-md-12 mb-3">
+                        <div class="form-check form-switch">
+                            {{ form.whatsapp_enabled }}
+                            <label class="form-check-label">تفعيل إشعارات واتساب</label>
+                        </div>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">مفتاح API</label>
+                        {{ form.whatsapp_api_key }}
+                        <div class="form-text">يمكنك الحصول على مفتاح API من خدمة Ultramsg أو WhatsApp Business API</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">رابط API</label>
+                        {{ form.whatsapp_api_url }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">معرف Instance</label>
+                        {{ form.whatsapp_instance_id }}
+                    </div>
+                </div>
+                
+                <!-- قوالب الرسائل -->
+                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-comment-alt text-info"></i> قوالب الرسائل</h5>
+                <div class="row mb-4">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">تذكير قبل يومين</label>
+                        {{ form.reminder_2days_template }}
+                        <div class="form-text">المتغيرات المتاحة: {student_name}, {installment_number}, {amount}, {due_date}</div>
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">تذكير قبل يوم</label>
+                        {{ form.reminder_1day_template }}
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">تذكير يوم الاستحقاق</label>
+                        {{ form.reminder_due_template }}
+                    </div>
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">إشعار التأخر</label>
+                        {{ form.overdue_template }}
+                        <div class="form-text">المتغيرات الإضافية: {overdue_days}, {contact_phone}</div>
+                    </div>
+                </div>
+                
+                <!-- إعدادات التذكير -->
+                <h5 class="border-bottom pb-2 mb-3"><i class="fas fa-bell text-warning"></i> إعدادات التذكير</h5>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.reminder_2days_before }}
+                            <label class="form-check-label">إرسال تذكير قبل يومين</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.reminder_1day_before }}
+                            <label class="form-check-label">إرسال تذكير قبل يوم</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.reminder_on_due_date }}
+                            <label class="form-check-label">إرسال تذكير يوم الاستحقاق</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="form-check">
+                            {{ form.send_overdue_notice }}
+                            <label class="form-check-label">إرسال إشعار التأخر</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">رقم التواصل للاستفسار</label>
+                        {{ form.contact_phone }}
+                    </div>
+                </div>
+                
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-save"></i> حفظ الإعدادات
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card shadow-sm bg-light">
+            <div class="card-body">
+                <h5><i class="fas fa-info-circle text-info"></i> مساعدة</h5>
+                <hr>
+                <h6>إعداد واتساب عبر Ultramsg:</h6>
+                <ol class="small">
+                    <li>سجل حساب في <a href="https://ultramsg.com" target="_blank">Ultramsg</a></li>
+                    <li>أنشئ Instance جديد</li>
+                    <li>امسح QR Code باستخدام واتساب</li>
+                    <li>انسخ Token و Instance ID</li>
+                </ol>
+                
+                <h6>تشغيل التذكيرات التلقائية:</h6>
+                <p class="small">استخدم الأمر التالي في Cron Job:</p>
+                <code class="small d-block bg-dark text-white p-2 rounded">
+                    python manage.py send_installment_reminders
+                </code>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

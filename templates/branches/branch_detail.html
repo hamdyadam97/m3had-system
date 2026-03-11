@@ -31,8 +31,8 @@
                <div class="card shadow-sm border-0 mb-4">
     <div class="card-body text-center">
         <h6 class="text-muted">هدف شهر {{ date.today|date:"F Y" }}</h6>
-        <h3 class="text-primary fw-bold">{{ branch.get_current_month_target|floatformat:2 }} ج.م</h3>
-        <small class="text-muted">المطلوب يومياً: {{ branch.get_current_month_daily_target|floatformat:2 }} ج.م</small>
+        <h3 class="text-primary fw-bold">{{ branch.get_current_month_target|floatformat:2 }} ر.س</h3>
+        <small class="text-muted">المطلوب يومياً: {{ branch.get_current_month_daily_target|floatformat:2 }} ر.س</small>
     </div>
 </div>
                 <hr>
@@ -144,8 +144,8 @@
                 {% for t in branch.targets.all %}
                 <tr>
                     <td>{{ t.get_month_display }} {{ t.year }}</td>
-                    <td>{{ t.amount|floatformat:0 }} ج.م</td>
-                    <td>{{ t.get_daily_target|floatformat:0 }} ج.م</td>
+                    <td>{{ t.amount|floatformat:0 }} ر.س</td>
+                    <td>{{ t.get_daily_target|floatformat:0 }} ر.س</td>
                     <td>
                         <a href="{% url 'branches:target_edit' t.pk %}" class="text-warning"><i class="fas fa-edit"></i></a>
                     </td>

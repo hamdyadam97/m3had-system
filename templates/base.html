@@ -213,6 +213,9 @@
                         <a class="nav-link {% if 'accounts' in request.path %}active{% endif %}" href="{% url 'accounts:user_list' %}">
                             <i class="fas fa-user-shield"></i> طاقم العمل
                         </a>
+                        <a class="nav-link {% if 'notification' in request.path %}active{% endif %}" href="{% url 'students:notification_settings' %}">
+                            <i class="fas fa-bell"></i> إعدادات الإشعارات
+                        </a>
                         {% endif %}
                     </nav>
                 </div>

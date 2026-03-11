@@ -51,7 +51,7 @@
 <td>
     {% with current_target=branch.get_current_month_target %}
         {% if current_target > 0 %}
-            <span class="fw-bold text-dark">{{ current_target|floatformat:2 }} ج.م</span>
+            <span class="fw-bold text-dark">{{ current_target|floatformat:2 }} ر.س</span>
         {% else %}
             <button type="button" class="btn btn-sm btn-outline-danger border-dashed"
                     data-bs-toggle="modal"
@@ -64,7 +64,7 @@
     {% endwith %}
 </td>                       <td>
     <span class="text-primary fw-bold">
-        {{ branch.get_daily_target|floatformat:2 }} ج.م
+        {{ branch.get_daily_target|floatformat:2 }} ر.س
     </span>
 </td>
                         <td>

@@ -4,8 +4,18 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-user"></i> {{ student.full_name }}</h2>
+    <h2>
+        <i class="fas fa-user"></i> {{ student.full_name }}
+        {% if student.has_overdue_installments %}
+        <span class="badge bg-danger"><i class="fas fa-exclamation-circle"></i> متأخر {{ student.get_overdue_days }} يوم</span>
+        {% endif %}
+    </h2>
     <div>
+        {% if student.payment_method == 'installment' %}
+        <a href="{% url 'students:installment_plan' student.pk %}" class="btn btn-info text-white">
+            <i class="fas fa-calendar-alt"></i> خطة الأقساط
+        </a>
+        {% endif %}
         <a href="{% url 'students:student_edit' student.pk %}" class="btn btn-warning">
             <i class="fas fa-edit"></i> تعديل
         </a>
@@ -14,6 +24,13 @@
         </a>
     </div>
 </div>
+
+{% if student.has_overdue_installments %}
+<div class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle"></i>
+    <strong>تنبيه:</strong> هذا الطالب لديه أقساط متأخرة. يرجى المتابعة فوراً.
+</div>
+{% endif %}
 
 <div class="row">
     <div class="col-md-6">
@@ -29,7 +46,7 @@
                     </tr>
                     <tr>
                         <td class="fw-bold">رقم الهاتف:</td>
-                        <td>{{ student.phone }}</td>
+                        <td dir="ltr">{{ student.phone }}</td>
                     </tr>
                     <tr>
                         <td class="fw-bold">البريد الإلكتروني:</td>
@@ -60,6 +77,10 @@
             <div class="card-body">
                 <table class="table table-borderless">
                     <tr>
+                        <td class="fw-bold">الفرع:</td>
+                        <td>{{ student.branch.name }}</td>
+                    </tr>
+                    <tr>
                         <td class="fw-bold">الدورة/الدبلومة:</td>
                         <td>{{ student.course.name }}</td>
                     </tr>
@@ -69,7 +90,7 @@
                     </tr>
                     <tr>
                         <td class="fw-bold">السعر الإجمالي:</td>
-                        <td>{{ student.total_price|floatformat:2 }} ج.م</td>
+                        <td>{{ student.total_price|floatformat:2 }} ر.س</td>
                     </tr>
                     <tr>
                         <td class="fw-bold">طريقة الدفع:</td>
@@ -77,6 +98,9 @@
                             <span class="badge {% if student.payment_method == 'cash' %}bg-success{% else %}bg-info{% endif %}">
                                 {{ student.get_payment_method_display }}
                             </span>
+                            {% if student.payment_method == 'installment' %}
+                            <span class="badge bg-secondary">{{ student.installment_count }} قسط</span>
+                            {% endif %}
                         </td>
                     </tr>
                     <tr>
@@ -86,9 +110,15 @@
                     <tr>
                         <td class="fw-bold">حالة الدفع:</td>
                         <td>
-                            <span class="badge {% if student.is_fully_paid %}bg-success{% else %}bg-warning{% endif %}">
-                                {{ student.get_payment_status }}
-                            </span>
+                            {% if student.has_overdue_installments %}
+                            <span class="badge bg-danger">متأخر {{ student.get_overdue_days }} يوم</span>
+                            {% elif student.is_fully_paid %}
+                            <span class="badge bg-success">✓ مدفوع بالكامل</span>
+                            {% elif student.get_total_paid > 0 %}
+                            <span class="badge bg-warning text-dark">جاري الدفع</span>
+                            {% else %}
+                            <span class="badge bg-secondary">غير مدفوع</span>
+                            {% endif %}
                         </td>
                     </tr>
                 </table>
@@ -107,16 +137,16 @@
                 <div class="row text-center">
                     <div class="col-md-4 border-end">
                         <h6 class="text-muted">السعر الإجمالي</h6>
-                        <h3 class="text-primary">{{ student.total_price|floatformat:2 }} ج.م</h3>
+                        <h3 class="text-primary">{{ student.total_price|floatformat:2 }} ر.س</h3>
                     </div>
                     <div class="col-md-4 border-end">
                         <h6 class="text-muted">المبلغ المدفوع</h6>
-                        <h3 class="text-success">{{ student.get_total_paid|floatformat:2 }} ج.م</h3>
+                        <h3 class="text-success">{{ student.get_total_paid|floatformat:2 }} ر.س</h3>
                     </div>
                     <div class="col-md-4">
                         <h6 class="text-muted">المبلغ المتبقي</h6>
                         <h3 class="{% if student.get_remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
-                            {{ student.get_remaining_amount|floatformat:2 }} ج.م
+                            {{ student.get_remaining_amount|floatformat:2 }} ر.س
                         </h3>
                     </div>
                 </div>

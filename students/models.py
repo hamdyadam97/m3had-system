@@ -30,9 +30,10 @@ class Student(models.Model):
     payment_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, verbose_name='طريقة الدفع')
     payment_location = models.CharField(max_length=10, choices=PAYMENT_LOCATION_CHOICES, default='in_person', verbose_name='مكان الدفع')
     
-    # للأقساط
+    # للأقساط - عدد الأقساط يُختار عند التسجيل
     installment_count = models.PositiveIntegerField(default=1, verbose_name='عدد الأقساط')
     installment_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name='قيمة القسط')
+    first_installment_date = models.DateField(null=True, blank=True, verbose_name='تاريخ أول قسط')
     paid_installments = models.PositiveIntegerField(default=0, verbose_name='الأقساط المدفوعة')
     
     # للتحويل البنكي
@@ -81,3 +82,35 @@ class Student(models.Model):
         elif self.get_total_paid() > 0:
             return f'متبقي {remaining:,.2f}'
         return 'غير مدفوع'
+    
+    def has_overdue_installments(self):
+        """هل يوجد أقساط متأخرة؟"""
+        if hasattr(self, 'installment_plan'):
+            return self.installment_plan.has_overdue_installments()
+        return False
+    
+    def get_overdue_days(self):
+        """عدد أيام التأخر للأقساط المتأخرة"""
+        if hasattr(self, 'installment_plan'):
+            overdue = self.installment_plan.get_overdue_installments().first()
+            if overdue:
+                return overdue.days_overdue()
+        return 0
+    
+    def get_payment_status_class(self):
+        """فئة CSS لحالة الدفع (للتلوين في القوائم)"""
+        if self.has_overdue_installments():
+            return 'danger'  # أحمر للمتأخرين
+        elif self.is_fully_paid():
+            return 'success'  # أخضر للمدفوع
+        elif self.get_total_paid() > 0:
+            return 'warning'  # أصفر للمدفوع جزئياً
+        return 'secondary'  # رمادي للغير مدفوع
+
+
+# استيراد النماذج الإضافية
+from .installment_models import InstallmentPlan, Installment
+from .notification_models import NotificationSettings, NotificationLog
+
+# إضافة خاصية للنموذج للوصول السريع
+Student.installment_plan = property(lambda self: getattr(self, '_installment_plan', None))

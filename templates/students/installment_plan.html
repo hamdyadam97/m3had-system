@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}خطة التقسيط - {{ student.full_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'students:student_list' %}">الطلاب</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'students:student_detail' student.pk %}">{{ student.full_name }}</a></li>
+                <li class="breadcrumb-item active">خطة التقسيط</li>
+            </ol>
+        </nav>
+        <h2><i class="fas fa-calendar-alt text-primary"></i> خطة التقسيط</h2>
+    </div>
+    <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع
+    </a>
+</div>
+
+{% if plan %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> ملخص الخطة</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td class="fw-bold">المبلغ الإجمالي:</td>
+                        <td>{{ plan.total_amount|floatformat:2 }} ر.س</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">عدد الأقساط:</td>
+                        <td>{{ plan.number_of_installments }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">قيمة القسط:</td>
+                        <td>{{ plan.installment_amount|floatformat:2 }} ر.س</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">تاريخ البدء:</td>
+                        <td>{{ plan.first_installment_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">الأقساط المدفوعة:</td>
+                        <td><span class="badge bg-success">{{ plan.get_paid_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">الأقساط المتبقية:</td>
+                        <td><span class="badge bg-warning">{{ plan.get_remaining_count }}</span></td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold">إجمالي المدفوع:</td>
+                        <td class="text-success fw-bold">{{ plan.get_total_paid|floatformat:2 }} ر.س</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        {% if plan.has_overdue_installments %}
+        <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i> 
+            <strong>تنبيه:</strong> يوجد أقساط متأخرة! يرجى المتابعة.
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-list-ol"></i> تفاصيل الأقساط</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>المبلغ</th>
+                                <th>تاريخ الاستحقاق</th>
+                                <th>الحالة</th>
+                                <th>تاريخ الدفع</th>
+                                <th>الإشعارات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for installment in installments %}
+                            <tr class="table-{{ installment.get_status_color }}">
+                                <td>{{ installment.installment_number }}</td>
+                                <td class="fw-bold">{{ installment.amount|floatformat:2 }} ر.س</td>
+                                <td>{{ installment.due_date|date:"Y-m-d" }}</td>
+                                <td>
+                                    <span class="badge bg-{{ installment.get_status_color }}">
+                                        {{ installment.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if installment.paid_date %}
+                                    {{ installment.paid_date|date:"Y-m-d" }}
+                                    {% else %}
+                                    <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if installment.reminder_sent_2days %}
+                                    <span class="badge bg-secondary" title="تم إرسال تذكير قبل يومين">-2ي</span>
+                                    {% endif %}
+                                    {% if installment.reminder_sent_1day %}
+                                    <span class="badge bg-secondary" title="تم إرسال تذكير قبل يوم">-1ي</span>
+                                    {% endif %}
+                                    {% if installment.reminder_sent_due %}
+                                    <span class="badge bg-secondary" title="تم إرسال تذكير يوم الاستحقاق">يوم</span>
+                                    {% endif %}
+                                    {% if installment.overdue_notice_sent %}
+                                    <span class="badge bg-danger" title="تم إرسال إشعار تأخر">متأخر</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info text-center">
+    <i class="fas fa-info-circle fa-3x mb-3"></i>
+    <h5>لا توجد خطة تقسيط</h5>
+    <p>هذا الطالب مسجل بدفع كاش أو لم يتم إنشاء خطة تقسيط بعد.</p>
+</div>
+{% endif %}
+{% endblock %}

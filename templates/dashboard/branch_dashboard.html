@@ -18,7 +18,7 @@
         <div class="card stat-card shadow-sm h-100">
             <div class="card-body">
                 <h6 class="opacity-75">تحصيل اليوم</h6>
-                <h2 class="fw-bold">{{ today_income|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <h2 class="fw-bold">{{ today_income|floatformat:2 }} <small class="fs-6">ر.س</small></h2>
                 <i class="fas fa-cash-register fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
             </div>
         </div>
@@ -27,7 +27,7 @@
         <div class="card stat-card warning shadow-sm h-100">
             <div class="card-body">
                 <h6 class="opacity-75">مصروفات اليوم</h6>
-                <h2 class="fw-bold">{{ today_expenses|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <h2 class="fw-bold">{{ today_expenses|floatformat:2 }} <small class="fs-6">ر.س</small></h2>
                 <i class="fas fa-outdent fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
             </div>
         </div>
@@ -36,7 +36,7 @@
         <div class="card stat-card success shadow-sm h-100">
             <div class="card-body">
                 <h6 class="opacity-75">صافي اليوم</h6>
-                <h2 class="fw-bold">{{ today_net|floatformat:2 }} <small class="fs-6">ج.م</small></h2>
+                <h2 class="fw-bold">{{ today_net|floatformat:2 }} <small class="fs-6">ر.س</small></h2>
                 <i class="fas fa-chart-line fa-3x position-absolute bottom-0 start-0 m-3 opacity-25"></i>
             </div>
         </div>
@@ -67,7 +67,7 @@
                 <hr>
                 <div class="mt-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="fw-bold">التقدم نحو الهدف المالي ({{ monthly_target }} ج.م)</span>
+                        <span class="fw-bold">التقدم نحو الهدف المالي ({{ monthly_target }} ر.س)</span>
                         <span class="badge bg-primary fs-6">{{ achievement_percentage }}%</span>
                     </div>
                     <div class="progress shadow-sm" style="height: 25px;">
