@@ -5,9 +5,25 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-users"></i> قائمة الطلاب</h2>
-    <a href="{% url 'students:student_add' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> إضافة طالب جديد
-    </a>
+    <div>
+        <div class="btn-group me-2">
+            <a href="{% url 'students:export_excel' %}?{{ request.GET.urlencode }}" class="btn btn-outline-success btn-sm">
+                <i class="fas fa-file-excel"></i> تصدير Excel
+            </a>
+            <a href="{% url 'students:export_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-outline-danger btn-sm">
+                <i class="fas fa-file-pdf"></i> تصدير PDF
+            </a>
+        </div>
+        <a href="{% url 'students:student_add' %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus"></i> إضافة طالب جديد
+        </a>
+    </div>
+</div>
+
+<!-- شرح سريع -->
+<div class="alert alert-info mb-3">
+    <i class="fas fa-lightbulb"></i> <strong>كيفية تسجيل طالب في دورة جديدة:</strong>
+    اضغط على زر <span class="badge bg-primary"><i class="fas fa-graduation-cap"></i> التسجيلات</span> ← ثم <span class="badge bg-warning text-dark">إكمال/انسحاب</span> ← ثم <span class="badge bg-success"><i class="fas fa-plus"></i> تسجيل جديد</span>
 </div>
 
 <!-- فلتر الحالة -->
@@ -79,6 +95,15 @@
                                 <i class="fas fa-exclamation-circle"></i> متأخر
                             </span>
                             {% endif %}
+                            {% if student.has_active_enrollment %}
+                            <span class="badge bg-success" title="مسجل في دورة">
+                                <i class="fas fa-book-open"></i> نشط
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary" title="غير مسجل في دورة">
+                                <i class="fas fa-pause-circle"></i> متاح
+                            </span>
+                            {% endif %}
                         </td>
                         <td>{{ student.phone }}</td>
                         <td>{{ student.course.name }}</td>
@@ -107,10 +132,18 @@
                         </td>
                         <td>{{ student.registration_date|date:"Y-m-d" }}</td>
                         <td>
-                            <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-sm btn-info">
+                            <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-sm btn-info" title="عرض التفاصيل">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <a href="{% url 'students:student_edit' student.pk %}" class="btn btn-sm btn-warning">
+                            <a href="{% url 'students:enrollment_list' student.pk %}" class="btn btn-sm btn-primary" title="التسجيلات">
+                                <i class="fas fa-graduation-cap"></i>
+                            </a>
+                            {% if not student.has_active_enrollment %}
+                            <a href="{% url 'students:enrollment_add' student.pk %}" class="btn btn-sm btn-success" title="تسجيل في دورة جديدة">
+                                <i class="fas fa-plus"></i>
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'students:student_edit' student.pk %}" class="btn btn-sm btn-warning" title="تعديل">
                                 <i class="fas fa-edit"></i>
                             </a>
                         </td>
@@ -131,15 +164,15 @@
 
 <!-- إحصائيات سريعة -->
 <div class="row mt-4">
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-danger text-white">
             <div class="card-body text-center">
                 <h5>{{ overdue_count|default:0 }}</h5>
-                <small>طلاب متأخرين</small>
+                <small>متأخرين</small>
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-warning text-dark">
             <div class="card-body text-center">
                 <h5>{{ pending_count|default:0 }}</h5>
@@ -147,11 +180,19 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="card bg-success text-white">
             <div class="card-body text-center">
                 <h5>{{ paid_count|default:0 }}</h5>
                 <small>مدفوع بالكامل</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-secondary text-white">
+            <div class="card-body text-center">
+                <h5>{% with available_count=students|length %}{{ available_count }}{% endwith %}</h5>
+                <small><i class="fas fa-pause-circle"></i> غير مسجلين في دورة</small>
             </div>
         </div>
     </div>

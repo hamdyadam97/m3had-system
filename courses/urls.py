@@ -9,4 +9,9 @@ urlpatterns = [
     path('<int:pk>/', views.course_detail, name='course_detail'),
     path('<int:pk>/edit/', views.course_edit, name='course_edit'),
     path('<int:pk>/delete/', views.course_delete_soft, name='course_delete'),
+
+
+    path('export/excel/', views.course_export_excel, name='course_export_excel'),
+    path('export/pdf/', views.course_export_pdf, name='course_export_pdf'),
+    path('import/excel/', views.course_import_excel, name='course_import_excel'),
 ]

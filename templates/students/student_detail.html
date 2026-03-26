@@ -11,6 +11,12 @@
         {% endif %}
     </h2>
     <div>
+        <a href="{% url 'students:enrollment_list' student.pk %}" class="btn btn-primary">
+            <i class="fas fa-graduation-cap"></i> التسجيلات
+            {% if student.has_active_enrollment %}
+            <span class="badge bg-warning text-dark ms-1">1 نشط</span>
+            {% endif %}
+        </a>
         {% if student.payment_method == 'installment' %}
         <a href="{% url 'students:installment_plan' student.pk %}" class="btn btn-info text-white">
             <i class="fas fa-calendar-alt"></i> خطة الأقساط
@@ -103,10 +109,7 @@
                             {% endif %}
                         </td>
                     </tr>
-                    <tr>
-                        <td class="fw-bold">مكان الدفع:</td>
-                        <td>{{ student.get_payment_location_display }}</td>
-                    </tr>
+
                     <tr>
                         <td class="fw-bold">حالة الدفع:</td>
                         <td>
@@ -126,6 +129,81 @@
         </div>
     </div>
 </div>
+
+<!-- معلومات التسجيل النشط -->
+{% with active_enrollment=student.get_active_enrollment %}
+{% if active_enrollment %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card border-success">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-book-open"></i> التسجيل النشط الحالي</h5>
+                <span class="badge bg-light text-success">{{ active_enrollment.get_enrollment_type_display }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p class="mb-1 text-muted">الدورة:</p>
+                        <h6 class="fw-bold">{{ active_enrollment.course.name }}</h6>
+                    </div>
+                    <div class="col-md-2">
+                        <p class="mb-1 text-muted">الفرع:</p>
+                        <h6>{{ active_enrollment.branch.name }}</h6>
+                    </div>
+                    <div class="col-md-2">
+                        <p class="mb-1 text-muted">تاريخ التسجيل:</p>
+                        <h6>{{ active_enrollment.enrollment_date|date:"Y-m-d" }}</h6>
+                    </div>
+                    <div class="col-md-2">
+                        <p class="mb-1 text-muted">المتبقي:</p>
+                        <h6 class="{% if active_enrollment.get_remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ active_enrollment.get_remaining_amount|floatformat:2 }} ر.س
+                        </h6>
+                    </div>
+                    <div class="col-md-3 text-start">
+                        <a href="{% url 'students:enrollment_detail' active_enrollment.pk %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> التفاصيل
+                        </a>
+                        <a href="{% url 'students:enrollment_change_status' active_enrollment.pk %}" class="btn btn-sm btn-outline-warning">
+                            <i class="fas fa-edit"></i> تغيير الحالة
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        {% if not student.can_enroll_in_new_course %}
+            <div class="alert alert-danger d-flex justify-content-between align-items-center shadow-sm">
+                <div>
+                    <i class="fas fa-exclamation-circle fa-lg me-2"></i>
+                    <strong>حجز معلق:</strong> الطالب محجوز لدورة ({{ student.course.name }}) ولكن لم يتم سداد الرسوم بعد.
+                    <br><small class="ms-4">يجب دفع القسط الأول لتتمكن من إضافة تسجيلات أخرى.</small>
+                </div>
+                <a href="#payments" class="btn btn-danger animation-pulse">
+                    <i class="fas fa-money-bill-wave"></i> توجه للدفع الآن
+                </a>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-info-circle"></i>
+                        <strong>لا يوجد تسجيل نشط:</strong> الطالب جاهز للتسجيل في دورة جديدة.
+                    </div>
+                    <a href="{% url 'students:enrollment_add' student.pk %}" class="btn btn-sm btn-success">
+                        <i class="fas fa-plus"></i> تسجيل في دورة جديدة
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+{% endwith %}
 
 <div class="row">
     <div class="col-md-12">

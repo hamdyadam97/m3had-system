@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="fas fa-edit"></i> {{ title }}</h3>
+    <a href="{% url 'students:enrollment_list' student.pk %}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-warning">
+                <i class="fas fa-exclamation-triangle"></i> تغيير حالة التسجيل
+            </div>
+            <div class="card-body">
+                <!-- معلومات التسجيل الحالي -->
+                <div class="alert alert-info mb-4">
+                    <h6 class="mb-2">معلومات التسجيل:</h6>
+                    <p class="mb-1"><strong>الطالب:</strong> {{ student.full_name }}</p>
+                    <p class="mb-1"><strong>الدورة:</strong> {{ enrollment.course.name }}</p>
+                    <p class="mb-1"><strong>الحالة الحالية:</strong> 
+                        <span class="badge bg-{{ enrollment.get_status_color }}">
+                            {{ enrollment.get_status_display }}
+                        </span>
+                    </p>
+                    <p class="mb-0"><strong>تاريخ التسجيل:</strong> {{ enrollment.enrollment_date|date:"Y-m-d" }}</p>
+                </div>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- الإجراء -->
+                    <div class="mb-3">
+                        <label for="{{ form.action.id_for_label }}" class="form-label">الإجراء المطلوب *</label>
+                        {{ form.action }}
+                        <div class="form-text text-muted">
+                            <i class="fas fa-info-circle"></i> اختر الإجراء المناسب للتسجيل الحالي
+                        </div>
+                        {% if form.action.errors %}
+                        <div class="text-danger small">{{ form.action.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- السبب -->
+                    <div class="mb-3" id="reason-section">
+                        <label for="{{ form.reason.id_for_label }}" class="form-label">السبب/الملاحظات</label>
+                        {{ form.reason }}
+                        <div class="form-text text-muted" id="reason-help">
+                            اكتب أي ملاحظات إضافية (مطلوب في حالة الانسحاب)
+                        </div>
+                        {% if form.reason.errors %}
+                        <div class="text-danger small">{{ form.reason.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- تحذير -->
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <strong>تنبيه:</strong> بعد تغيير الحالة، سيتمكن الطالب من التسجيل في دورة جديدة.
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-save"></i> تأكيد التغيير
+                        </button>
+                        <a href="{% url 'students:enrollment_list' student.pk %}" class="btn btn-outline-secondary">
+                            إلغاء
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- شرح الإجراءات -->
+        <div class="card mt-3">
+            <div class="card-header bg-light">
+                <i class="fas fa-info-circle"></i> شرح الإجراءات
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <span class="badge bg-primary">إكمال الدورة</span>
+                        <p class="small text-muted mb-0">عند نجاح الطالب وإنهاء الدورة بشكل طبيعي</p>
+                    </li>
+                    <li class="mb-2">
+                        <span class="badge bg-danger">الانسحاب من الدورة</span>
+                        <p class="small text-muted mb-0">عند انسحاب الطالب لأي سبب (يجب ذكر السبب)</p>
+                    </li>
+                    <li>
+                        <span class="badge bg-warning">تعليق مؤقت</span>
+                        <p class="small text-muted mb-0">إيقاف الدورة مؤقتاً (إجازة مرضية، ظروف خاصة)</p>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const actionSelect = document.getElementById('id_action');
+        const reasonField = document.getElementById('id_reason');
+        const reasonHelp = document.getElementById('reason-help');
+        
+        function updateReasonField() {
+            if (actionSelect.value === 'withdraw') {
+                reasonField.setAttribute('required', 'required');
+                reasonHelp.innerHTML = '<span class="text-danger">*</span> مطلوب ذكر سبب الانسحاب';
+                reasonHelp.classList.add('text-danger');
+            } else {
+                reasonField.removeAttribute('required');
+                reasonHelp.innerHTML = 'اكتب أي ملاحظات إضافية (اختياري)';
+                reasonHelp.classList.remove('text-danger');
+            }
+        }
+        
+        actionSelect.addEventListener('change', updateReasonField);
+        updateReasonField(); // Run on page load
+    });
+</script>
+{% endblock %}

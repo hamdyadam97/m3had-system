@@ -35,7 +35,7 @@ class StudentForm(forms.ModelForm):
         model = Student
         fields = [
             'full_name', 'phone', 'email', 'national_id', 'address',
-            'branch', 'course', 'total_price', 'payment_method', 'payment_location',
+            'branch', 'course', 'total_price', 'payment_method',
             'installment_count', 'first_installment_date', 'notes'
         ]
         widgets = {
@@ -48,23 +48,32 @@ class StudentForm(forms.ModelForm):
             'course': forms.Select(attrs={'class': 'form-select'}),
             'total_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
             'payment_method': forms.Select(attrs={'class': 'form-select', 'id': 'payment_method'}),
-            'payment_location': forms.Select(attrs={'class': 'form-select'}),
             'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-    
+
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
-        
-        # تقييد الفروع حسب صلاحيات المستخدم
+
         if user:
-            if not user.is_superuser and user.user_type != 'admin':
-                if user.user_type == 'regional_manager':
-                    self.fields['branch'].queryset = user.managed_branches.all()
-                elif user.branch:
-                    self.fields['branch'].queryset = type(user.branch).objects.filter(id=user.branch.id)
+            from branches.models import Branch
+            
+            # إذا كان مدير إقليمي، عرض فروع منطقته فقط
+            if user.user_type == 'regional_manager':
+                self.fields['branch'].queryset = user.managed_branches.all()
+            
+            # إذا كان أدمن أو سوبر يوزر، عرض كل الفروع النشطة
+            elif user.is_superuser or user.user_type == 'admin':
+                self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
+
+            # إذا كان موظف فرع أو مدير فرع (وليس أدمن عام)
+            else:
+                if user.branch:
+                    self.fields['branch'].queryset = Branch.objects.filter(id=user.branch.id)
                     self.fields['branch'].initial = user.branch
-                    self.fields['branch'].widget.attrs['disabled'] = True
+                    # بدلاً من disabled، نجعل الحقل غير قابل للتعديل مع بقاء قيمته مرسلة
+                    # أو نتركه كما هو لأن الـ Queryset يحتوي على فرع واحد فقط أصلاً
+                    self.fields['branch'].empty_label = None  # لإزالة خيار "---------"
     
     def clean(self):
         cleaned_data = super().clean()

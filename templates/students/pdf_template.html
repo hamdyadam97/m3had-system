@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Cairo', sans-serif; }
+        body { margin: 0; padding: 0; direction: rtl; }
+
+        /* إعدادات الصفحة */
+        @page {
+            size: A4;
+            margin: 1.5cm;
+            @bottom-right {
+                content: "صفحة " counter(page) " من " counter(pages);
+                font-size: 10px;
+                font-family: 'Cairo';
+            }
+        }
+
+        /* الترويسة */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+        .company-info h1 {
+            color: #1e3a8a;
+            margin: 0;
+            font-size: 24px;
+        }
+        .report-title {
+            text-align: center;
+            background-color: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* الجدول */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th {
+            background-color: #1e3a8a;
+            color: white;
+            font-weight: bold;
+            padding: 12px 8px;
+            font-size: 12px;
+            border: 1px solid #e5e7eb;
+        }
+        td {
+            padding: 10px 8px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            font-size: 11px;
+        }
+        tr:nth-child(even) { background-color: #f9fafb; }
+
+        /* الأوسمة (Badges) للمستحقات */
+        .status-paid { color: #059669; font-weight: bold; }
+        .status-overdue { color: #dc2626; font-weight: bold; }
+
+        /* إحصائيات سريعة في الأسفل */
+        .summary-box {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+            border-top: 1px solid #e5e7eb;
+            padding-top: 20px;
+        }
+        .summary-item {
+            text-align: center;
+            background: #f8fafc;
+            padding: 10px 20px;
+            border-radius: 5px;
+            border: 1px solid #cbd5e1;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="company-info">
+            <h1>نظام إدارة المعاهد</h1>
+            <p>تقرير بيانات الطلاب المسجلين</p>
+        </div>
+        <div class="date-info">
+            <p>التاريخ: {{ today|date:"Y/m/d" }}</p>
+        </div>
+    </div>
+
+    <div class="report-title">
+        <h2>كشف بأسماء الطلاب وحالات الدفع</h2>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>اسم الطالب</th>
+                <th>رقم الهاتف</th>
+                <th>الدورة/الدبلومة</th>
+                <th>طريقة الدفع</th>
+                <th>المبلغ الكلي</th>
+                <th>المدفوع</th>
+                <th>المتبقي</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for student in students %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ student.full_name }}</td>
+                <td>{{ student.phone }}</td>
+                <td>{{ student.course.name }}</td>
+                <td>{{ student.get_payment_method_display }}</td>
+                <td>{{ student.total_price }} ر.س</td>
+                <td>{{ student.get_total_paid }} ر.س</td>
+                <td class="{% if student.get_remaining_amount > 0 %}status-overdue{% else %}status-paid{% endif %}">
+                    {{ student.get_remaining_amount }} ر.س
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary-box">
+        <div class="summary-item">
+            <strong>إجمالي الطلاب:</strong> {{ students.count }}
+        </div>
+        <div class="summary-item">
+            <strong>إجمالي المحصل:</strong> {{ total_collected }} ر.س
+        </div>
+        <div class="summary-item">
+            <strong>إجمالي المتبقي:</strong> {{ total_remaining }} ر.س
+        </div>
+    </div>
+
+    <div style="margin-top: 50px; font-size: 10px; text-align: center; color: #9ca3af;">
+        هذا التقرير تم إنشاؤه آلياً بواسطة نظام الإدارة ولا يحتاج لختم.
+    </div>
+
+</body>
+</html>

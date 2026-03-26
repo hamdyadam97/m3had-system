@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+
+{% block title %}تسجيلات {{ student.full_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3><i class="fas fa-graduation-cap"></i> تسجيلات الطالب في الدورات</h3>
+        <p class="text-muted mb-0">{{ student.full_name }} - {{ student.phone }}</p>
+    </div>
+    <div>
+        <a href="{% url 'students:student_detail' student.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right"></i> رجوع للطالب
+        </a>
+    </div>
+</div>
+
+<!-- حالة التسجيل الحالي -->
+{% if active_enrollment %}
+    <div class="alert alert-warning border-warning">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-1"><i class="fas fa-info-circle"></i> تسجيل نشط حالياً</h5>
+                <p class="mb-0">
+                    الطالب مسجل في: <strong>{{ active_enrollment.course.name }}</strong>
+                </p>
+            </div>
+            <div>
+                <a href="{% url 'students:enrollment_change_status' active_enrollment.pk %}" class="btn btn-outline-danger">إكمال/انسحاب</a>
+            </div>
+        </div>
+    </div>
+{% elif not can_add_enrollment %}
+    <div class="alert alert-danger border-danger">
+        <h5 class="mb-1"><i class="fas fa-exclamation-triangle"></i> حجز معلق (غير مفعل)</h5>
+        <p class="mb-0">
+            الطالب لديه حجز لدورة <strong>{{ student.course.name }}</strong> ولكن لم يتم سداد أي مبالغ.
+            <strong>يجب سداد القسط الأول لتتمكن من إضافته لدورة أخرى.</strong>
+        </p>
+    </div>
+{% else %}
+    <div class="alert alert-success">
+        <h5 class="mb-1"><i class="fas fa-check-circle"></i> متاح للتسجيل</h5>
+        <p class="mb-0">الطالب غير مسجل في أي دورة حالياً ومسدد التزاماته السابقة.</p>
+    </div>
+{% endif %}
+
+<!-- زر إضافة تسجيل جديد -->
+{% if can_add_enrollment %}
+<div class="mb-3">
+    <a href="{% url 'students:enrollment_add' student.pk %}" class="btn btn-primary">
+        <i class="fas fa-plus-circle"></i> تسجيل في دورة جديدة
+    </a>
+</div>
+{% else %}
+<div class="mb-3">
+    <button class="btn btn-secondary" disabled>
+        <i class="fas fa-lock"></i> لا يمكن التسجيل (يوجد تسجيل نشط)
+    </button>
+</div>
+{% endif %}
+
+<!-- قائمة التسجيلات -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="fas fa-list"></i> سجل التسجيلات</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>الدورة</th>
+                        <th>الفرع</th>
+                        <th>النوع</th>
+                        <th>الحالة</th>
+                        <th>تاريخ التسجيل</th>
+                        <th>المبلغ</th>
+                        <th>المتبقي</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for enrollment in enrollments %}
+                    <tr>
+                        <td class="fw-bold">{{ enrollment.course.name }}</td>
+                        <td>{{ enrollment.branch.name }}</td>
+                        <td>
+                            <span class="badge bg-info">{{ enrollment.get_enrollment_type_display }}</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ enrollment.get_status_color }}">
+                                {{ enrollment.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{{ enrollment.enrollment_date|date:"Y-m-d" }}</td>
+                        <td>{{ enrollment.total_price|floatformat:2 }} ر.س</td>
+                        <td>
+                            {% if enrollment.is_fully_paid %}
+                                <span class="text-success"><i class="fas fa-check"></i> مدفوع</span>
+                            {% else %}
+                                <span class="text-warning">{{ enrollment.get_remaining_amount|floatformat:2 }} ر.س</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'students:enrollment_detail' enrollment.pk %}" class="btn btn-sm btn-outline-info">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            {% if enrollment.is_active %}
+                            <a href="{% url 'students:enrollment_change_status' enrollment.pk %}" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p class="mb-0">لا يوجد تسجيلات سابقة</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ملاحظات -->
+<div class="card mt-4">
+    <div class="card-body">
+        <h6 class="text-muted"><i class="fas fa-info-circle"></i> ملاحظات:</h6>
+        <ul class="mb-0 text-muted small">
+            <li>الطالب يمكن أن يكون مسجل في <strong>دورة واحدة فقط</strong> في نفس الوقت.</li>
+            <li>لتسجيل الطالب في دورة جديدة، يجب <strong>إكمال</strong> الدورة الحالية أو <strong>الانسحاب</strong> منها.</li>
+            <li>التقوية: إعادة نفس الدورة لتحسين الأداء.</li>
+            <li>الإعادة: تسجيل الدورة من جديد بعد الرسوب أو الانسحاب.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

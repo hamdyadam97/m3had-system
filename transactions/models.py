@@ -12,7 +12,7 @@ class Income(models.Model):
     ]
     
     PAYMENT_METHOD_CHOICES = [
-        ('cash', 'كاش'),
+        ('mada', 'مدى'),
         ('visa', 'فيزا'),
         ('bank_transfer', 'تحويل بنكي'),
     ]
@@ -32,10 +32,18 @@ class Income(models.Model):
     # بيانات الطالب
     student = models.ForeignKey(Student, on_delete=models.CASCADE, verbose_name='الطالب')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name='الدورة/الدبلومة')
-    
+
+
     # بيانات المبلغ
     amount = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='المبلغ')
-    
+    installment = models.ForeignKey(
+        'students.Installment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name='القسط المرتبط'
+    )
+
     # طريقة الدفع
     payment_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, verbose_name='طريقة الدفع')
     payment_location = models.CharField(max_length=10, choices=PAYMENT_LOCATION_CHOICES, verbose_name='مكان الدفع')
@@ -50,7 +58,67 @@ class Income(models.Model):
     notes = models.TextField(blank=True, verbose_name='ملاحظات')
     
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
-    
+    enrollment = models.ForeignKey(
+        'students.Enrollment',  # assuming Enrollment is in students app
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='payments',
+        verbose_name='التسجيل'
+    )
+
+    def save(self, *args, **kwargs):
+        # تعيين الفرع والدورة من الطالب
+        if not self.branch_id and self.student_id:
+            self.branch = self.student.branch
+        if not self.course_id and self.student_id:
+            self.course = self.student.course
+
+        # ✅ ننشئ أو نجيب الـ Enrollment قبل الحفظ
+        if self.student_id and self.course_id:
+            from students.models import Enrollment  # import هنا عشان avoid circular import
+
+            self.enrollment, created = Enrollment.objects.get_or_create(
+                student=self.student,
+                course=self.course,
+                defaults={
+                    'branch': self.branch,
+                    'total_price': self.student.total_price,
+                    'payment_method': self.student.payment_method,
+                    'installment_count': self.student.installment_count,
+                    'installment_amount': self.student.installment_amount,
+                    'status': 'active',
+                }
+            )
+
+        super().save(*args, **kwargs)
+
+        # ✅ نحدث الـ Enrollment بعد الحفظ
+        if self.enrollment:
+            self._update_enrollment()
+
+    def _update_enrollment(self):
+        """تحديث بيانات الـ Enrollment بعد الدفع"""
+        from django.db.models import Sum
+
+        # حساب إجمالي المدفوع للـ Enrollment ده
+        total_paid = Income.objects.filter(
+            enrollment=self.enrollment
+        ).aggregate(total=Sum('amount'))['total'] or 0
+
+        enrollment = self.enrollment
+
+        # تحديث عدد الأقساط المدفوعة
+        if enrollment.payment_method == 'installment' and enrollment.installment_amount > 0:
+            enrollment.paid_installments = min(
+                int(total_paid / enrollment.installment_amount),
+                enrollment.installment_count
+            )
+
+        # تفعيل الاشتراك لو أول دفعة
+        if enrollment.status == 'pending' and total_paid > 0:
+            enrollment.status = 'active'
+
+        enrollment.save()
     class Meta:
         verbose_name = 'إيراد'
         verbose_name_plural = 'الإيرادات'
@@ -58,12 +126,21 @@ class Income(models.Model):
     
     def __str__(self):
         return f"{self.student.full_name} - {self.amount:,.2f} ({self.get_income_type_display()})"
-    
-    def save(self, *args, **kwargs):
-        # تعيين الدورة تلقائياً من الطالب إذا لم تُحدد
-        if not self.course_id and self.student_id:
-            self.course = self.student.course
-        super().save(*args, **kwargs)
+
+    # داخل كلاس Income في transactions/models.py
+
+    def _link_to_installment(self):
+        """ربط الإيراد بأول قسط مش مدفوع"""
+        try:
+            plan = self.student.installment_plan
+            # ندور على أول قسط مش مدفوع بنفس المبلغ أو أقل
+            installment = plan.installments.filter(is_paid=False).first()
+            if installment:
+                self.installment = installment
+        except:
+            pass
+
+
 
 
 class Expense(models.Model):

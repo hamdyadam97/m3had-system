@@ -65,6 +65,10 @@ def dashboard(request):
 
     return render(request, 'dashboard/dashboard.html', context)
 
+
+from decimal import Decimal  # ضيف السطر ده فوق في الاستيرادات
+
+
 @login_required
 def branch_dashboard(request, branch_id):
     user = request.user
@@ -72,17 +76,28 @@ def branch_dashboard(request, branch_id):
     today = date.today()
     month_start = today.replace(day=1)
 
-    # ... (نفس كود الـ Security Check اللي كتبناه) ...
+    # ... (كود الـ Security Check) ...
 
-    # 2. الإحصائيات المالية للفرع
-    today_income = Income.objects.filter(branch=branch, date=today).aggregate(total=Sum('amount'))['total'] or 0
-    today_expenses = Expense.objects.filter(branch=branch, date=today).aggregate(total=Sum('amount'))['total'] or 0
-    monthly_income = Income.objects.filter(branch=branch, date__gte=month_start).aggregate(total=Sum('amount'))['total'] or 0
-    monthly_expenses = Expense.objects.filter(branch=branch, date__gte=month_start).aggregate(total=Sum('amount'))['total'] or 0
+    # 1. الإحصائيات المالية (استخدام Decimal لضمان التوافق)
+    today_income = Income.objects.filter(branch=branch, date=today).aggregate(total=Sum('amount'))['total'] or Decimal(
+        '0.00')
+    today_expenses = Expense.objects.filter(branch=branch, date=today).aggregate(total=Sum('amount'))[
+                         'total'] or Decimal('0.00')
 
-    # جلب التارجت من الموديل المرتبط (التصحيح)
-    target_amount = branch.get_current_month_target() # استخدمنا الدالة اللي انت كاتبها في الموديل
-    achievement_percentage = (monthly_income / target_amount * 100) if target_amount > 0 else 0
+    monthly_income = Income.objects.filter(branch=branch, date__gte=month_start).aggregate(total=Sum('amount'))[
+                         'total'] or Decimal('0.00')
+    monthly_expenses = Expense.objects.filter(branch=branch, date__gte=month_start).aggregate(total=Sum('amount'))[
+                           'total'] or Decimal('0.00')
+
+    # 2. جلب التارجت وتحويله لـ Decimal
+    target_amount = Decimal(str(branch.get_current_month_target() or 0))
+
+    # 3. حساب نسبة الإنجاز بأمان
+    if target_amount > 0:
+        # بنضرب في 100 الأول كـ Decimal عشان الدقة
+        achievement_percentage = (monthly_income / target_amount) * 100
+    else:
+        achievement_percentage = 0
 
     top_courses = Course.objects.filter(branches=branch).annotate(
         students_count=Count('student', filter=Q(student__branch=branch, student__is_active=True))
@@ -96,8 +111,8 @@ def branch_dashboard(request, branch_id):
         'monthly_income': monthly_income,
         'monthly_expenses': monthly_expenses,
         'monthly_net': monthly_income - monthly_expenses,
-        'monthly_target': target_amount, # القيمة المصححة
-        'achievement_percentage': round(achievement_percentage, 2),
+        'monthly_target': target_amount,
+        'achievement_percentage': round(float(achievement_percentage), 1),  # تحويل لـ float هنا للـ Template فقط
         'top_courses': top_courses,
     }
     return render(request, 'dashboard/branch_dashboard.html', context)

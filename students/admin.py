@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Student, InstallmentPlan, Installment, NotificationSettings, NotificationLog
+from .enrollment_models import Enrollment
 
 
 class InstallmentInline(admin.TabularInline):
@@ -14,12 +15,22 @@ class InstallmentInline(admin.TabularInline):
     get_status_display.short_description = 'الحالة'
 
 
+class EnrollmentInline(admin.TabularInline):
+    """عرض التسجيلات داخل صفحة الطالب"""
+    model = Enrollment
+    extra = 0
+    fields = ['course', 'branch', 'enrollment_type', 'status', 'enrollment_date', 'total_price']
+    readonly_fields = ['enrollment_date']
+    show_change_link = True
+
+
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
-    list_display = ['full_name', 'phone', 'branch', 'course', 'payment_method', 'total_price', 'get_payment_status', 'has_overdue_status', 'registration_date']
-    list_filter = ['branch', 'course', 'payment_method', 'payment_location', 'is_active']
+    list_display = ['full_name', 'phone', 'branch', 'course', 'payment_method', 'total_price', 'get_payment_status', 'has_overdue_status', 'registration_date', 'has_active_enrollment_status']
+    list_filter = ['branch', 'course', 'payment_method', 'is_active']
     search_fields = ['full_name', 'phone', 'national_id']
     readonly_fields = ['created_at', 'updated_at', 'get_total_paid', 'get_remaining_amount']
+    inlines = [EnrollmentInline]
     
     def get_payment_status(self, obj):
         return obj.get_payment_status()
@@ -31,6 +42,49 @@ class StudentAdmin(admin.ModelAdmin):
             return f"⚠️ متأخر {days} يوم"
         return "✓"
     has_overdue_status.short_description = 'التأخر'
+
+    # في ملف admin.py داخل StudentAdmin
+    def has_active_enrollment_status(self, obj):
+        enrollment = obj.get_active_enrollment()  # بنادي الميثود ونخزن النتيجة
+        if enrollment:  # لو فيه نتيجة (مش None)
+            return f"📚 {enrollment.course.name}"
+        return "❌ لا يوجد"
+
+    has_active_enrollment_status.short_description = 'التسجيل النشط'
+
+
+@admin.register(Enrollment)
+class EnrollmentAdmin(admin.ModelAdmin):
+    list_display = ['student', 'course', 'branch', 'enrollment_type', 'status', 'enrollment_date', 'total_price', 'get_remaining_amount']
+    list_filter = ['status', 'enrollment_type', 'branch', 'enrollment_date']
+    search_fields = ['student__full_name', 'student__phone', 'course__name']
+    readonly_fields = ['created_at', 'updated_at', 'enrollment_date']
+    fieldsets = (
+        ('معلومات الطالب والدورة', {
+            'fields': ('student', 'course', 'branch', 'enrollment_type', 'status')
+        }),
+        ('بيانات الدفع', {
+            'fields': ('total_price', 'payment_method', 'installment_count', 'installment_amount', 'first_installment_date')
+        }),
+        ('التواريخ', {
+            'fields': ('enrollment_date', 'start_date', 'end_date', 'withdrawal_date')
+        }),
+        ('الانسحاب', {
+            'fields': ('withdrawal_reason',),
+            'classes': ('collapse',)
+        }),
+        ('ملاحظات', {
+            'fields': ('notes',)
+        }),
+        ('البيانات الزمنية', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def get_remaining_amount(self, obj):
+        return f"{obj.get_remaining_amount():.2f} ر.س"
+    get_remaining_amount.short_description = 'المتبقي'
 
 
 @admin.register(InstallmentPlan)

@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}تفاصيل التسجيل - {{ enrollment.course.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3><i class="fas fa-file-alt"></i> تفاصيل التسجيل</h3>
+    <div>
+        <a href="{% url 'students:enrollment_list' student.pk %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-right"></i> رجوع للتسجيلات
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <!-- معلومات التسجيل -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <i class="fas fa-graduation-cap"></i> معلومات الدورة
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless table-sm">
+                    <tr>
+                        <td class="text-muted">الدورة:</td>
+                        <td class="fw-bold">{{ enrollment.course.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">الفرع:</td>
+                        <td>{{ enrollment.branch.name }}</td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">نوع التسجيل:</td>
+                        <td>
+                            <span class="badge bg-info">{{ enrollment.get_enrollment_type_display }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">الحالة:</td>
+                        <td>
+                            <span class="badge bg-{{ enrollment.get_status_color }}">
+                                {{ enrollment.get_status_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-muted">تاريخ التسجيل:</td>
+                        <td>{{ enrollment.enrollment_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% if enrollment.end_date %}
+                    <tr>
+                        <td class="text-muted">تاريخ الانتهاء:</td>
+                        <td>{{ enrollment.end_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if enrollment.withdrawal_date %}
+                    <tr>
+                        <td class="text-muted">تاريخ الانسحاب:</td>
+                        <td>{{ enrollment.withdrawal_date|date:"Y-m-d" }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if enrollment.withdrawal_reason %}
+                    <tr>
+                        <td class="text-muted">سبب الانسحاب:</td>
+                        <td class="text-danger">{{ enrollment.withdrawal_reason }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+        
+        <!-- معلومات الطالب -->
+        <div class="card mt-3">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-user"></i> معلومات الطالب
+            </div>
+            <div class="card-body">
+                <p class="mb-1"><strong>الاسم:</strong> {{ student.full_name }}</p>
+                <p class="mb-1"><strong>الهاتف:</strong> {{ student.phone }}</p>
+                <p class="mb-0"><strong>البريد:</strong> {{ student.email|default:"غير محدد" }}</p>
+            </div>
+        </div>
+        
+        <!-- إجراءات -->
+        {% if enrollment.is_active %}
+        <div class="card mt-3">
+            <div class="card-header bg-warning">
+                <i class="fas fa-cog"></i> إجراءات
+            </div>
+            <div class="card-body">
+                <a href="{% url 'students:enrollment_change_status' enrollment.pk %}" class="btn btn-warning w-100">
+                    <i class="fas fa-edit"></i> تغيير الحالة
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- معلومات المالية والدفع -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-money-bill-wave"></i> بيانات الدفع
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center border-end">
+                        <h6 class="text-muted">السعر الإجمالي</h6>
+                        <h4 class="text-primary">{{ enrollment.total_price|floatformat:2 }} ر.س</h4>
+                    </div>
+                    <div class="col-md-4 text-center border-end">
+                        <h6 class="text-muted">المبلغ المدفوع</h6>
+                        <h4 class="text-success">{{ total_paid|floatformat:2 }} ر.س</h4>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <h6 class="text-muted">المتبقي</h6>
+                        <h4 class="{% if remaining > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ remaining|floatformat:2 }} ر.س
+                        </h4>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <h6><i class="fas fa-list"></i> سجل المدفوعات</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>التاريخ</th>
+                                <th>النوع</th>
+                                <th>المبلغ</th>
+                                <th>طريقة الدفع</th>
+                                <th>المحصل</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td>{{ payment.date|date:"Y-m-d" }}</td>
+                                <td>
+                                    {% if payment.income_type == 'registration' %}
+                                        <span class="badge bg-primary">تسجيل</span>
+                                    {% else %}
+                                        <span class="badge bg-info">قسط</span>
+                                    {% endif %}
+                                </td>
+                                <td class="fw-bold">{{ payment.amount|floatformat:2 }} ر.س</td>
+                                <td>{{ payment.get_payment_method_display }}</td>
+                                <td>{{ payment.collected_by.get_full_name|default:payment.collected_by.username }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-3">
+                                    لا توجد مدفوعات مسجلة
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ملاحظات -->
+        {% if enrollment.notes %}
+        <div class="card mt-3">
+            <div class="card-header bg-light">
+                <i class="fas fa-sticky-note"></i> ملاحظات
+            </div>
+            <div class="card-body">
+                <p class="mb-0">{{ enrollment.notes|linebreaks }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

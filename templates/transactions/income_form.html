@@ -3,6 +3,7 @@
 {% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
 
 {% block content %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-money-bill-wave"></i> {{ title }}</h2>
     <a href="{% url 'transactions:income_list' %}" class="btn btn-secondary">
@@ -12,48 +13,65 @@
 
 <div class="card">
     <div class="card-body">
-        <form method="post">
+        <form method="post" id="income-form">
             {% csrf_token %}
-            
+
             <div class="row">
                 <div class="col-md-6">
-                    <div class="mb-3">
-                        <label for="{{ form.date.id_for_label }}" class="form-label">التاريخ *</label>
-                        {{ form.date }}
-                    </div>
-                    
+                    <!-- نوع الإيراد -->
                     <div class="mb-3">
                         <label for="{{ form.income_type.id_for_label }}" class="form-label">نوع الإيراد *</label>
                         {{ form.income_type }}
+                        <small class="form-text text-muted" id="income-type-help">اختر نوع الإيراد أولاً لعرض الطلاب</small>
                     </div>
-                    
+
+                    <!-- الطالب -->
                     <div class="mb-3">
                         <label for="{{ form.student.id_for_label }}" class="form-label">الطالب *</label>
                         {{ form.student }}
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.course.id_for_label }}" class="form-label">الدورة/الدبلومة *</label>
+
+                    <!-- ✅ معلومات الكورس (هنا هتظهر) -->
+                    <div id="course-info"></div>
+
+                    <!-- ✅ الدورة - مخفي وغير required -->
+                    <div class="d-none">
                         {{ form.course }}
                     </div>
-                </div>
-                
-                <div class="col-md-6">
+
                     <div class="mb-3">
-                        <label for="{{ form.amount.id_for_label }}" class="form-label">المبلغ *</label>
+                        <label for="{{ form.date.id_for_label }}" class="form-label">التاريخ *</label>
+                        {{ form.date }}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <!-- ✅ معلومات الأسعار (هنا هتظهر) -->
+                    <div id="price-info"></div>
+
+                    <!-- ✅ خيارات الدفع (هنا هتظهر) -->
+                    <div id="payment-options" class="mb-3">
+                        <div class="text-muted text-center py-4 border rounded">
+                            <i class="fas fa-hand-pointer fa-2x mb-2 text-muted"></i>
+                            <p class="mb-0">اختر الطالب لعرض خيارات الدفع</p>
+                        </div>
+                    </div>
+
+                    <!-- ✅ المبلغ - مخفي وغير required -->
+                    <div class="d-none">
                         {{ form.amount }}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="{{ form.payment_method.id_for_label }}" class="form-label">طريقة الدفع *</label>
                         {{ form.payment_method }}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="{{ form.payment_location.id_for_label }}" class="form-label">مكان الدفع *</label>
                         {{ form.payment_location }}
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="{{ form.bank_account_number.id_for_label }}" class="form-label">رقم الحساب البنكي</label>
                         {{ form.bank_account_number }}
@@ -61,18 +79,320 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="mb-3">
                 <label for="{{ form.notes.id_for_label }}" class="form-label">ملاحظات</label>
                 {{ form.notes }}
             </div>
-            
+
             <div class="text-center">
-                <button type="submit" class="btn btn-primary px-5">
+                <button type="submit" class="btn btn-primary px-5" id="submit-btn" disabled>
                     <i class="fas fa-save"></i> حفظ
                 </button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const incomeTypeSelect = document.getElementById('{{ form.income_type.id_for_label }}');
+    const studentSelect = document.getElementById('{{ form.student.id_for_label }}');
+    const courseSelect = document.getElementById('{{ form.course.id_for_label }}');
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const submitBtn = document.getElementById('submit-btn');
+
+    const courseInfoDiv = document.getElementById('course-info');
+    const priceInfoDiv = document.getElementById('price-info');
+    const paymentOptionsDiv = document.getElementById('payment-options');
+
+    let currentData = null;
+    let currentBranchId = '';
+
+    {% if request.user.branch %}
+        currentBranchId = '{{ request.user.branch.id }}';
+    {% endif %}
+
+    const branchSelect = document.getElementById('{{ form.branch.id_for_label }}');
+    if (branchSelect) {
+        branchSelect.addEventListener('change', function() {
+            currentBranchId = this.value;
+            if (incomeTypeSelect.value) {
+                incomeTypeSelect.value = '';
+                studentSelect.innerHTML = '<option value="">اختر نوع الإيراد أولاً</option>';
+                resetDisplay();
+            }
+        });
+    }
+
+    // ✅ إزالة required من الحقول المخفية
+    if (courseSelect) courseSelect.required = false;
+    if (amountInput) amountInput.required = false;
+
+    // لما يتغير نوع الإيراد
+    incomeTypeSelect.addEventListener('change', function() {
+        const type = this.value;
+        if (!type) return;
+
+        studentSelect.innerHTML = '<option value="">⏳ جاري التحميل...</option>';
+
+        let url = `/transactions/ajax/get-students-by-type/?income_type=${type}`;
+        if (currentBranchId) {
+            url += `&branch_id=${currentBranchId}`;
+        }
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                studentSelect.innerHTML = '<option value="">👤 اختر الطالب...</option>';
+
+                if (data.students.length === 0) {
+                    const option = document.createElement('option');
+                    option.disabled = true;
+                    option.textContent = 'لا يوجد طلاب متاحين';
+                    studentSelect.appendChild(option);
+                    return;
+                }
+
+                const byBranch = {};
+                data.students.forEach(s => {
+                    const branch = s.branch_name || 'غير معروف';
+                    if (!byBranch[branch]) byBranch[branch] = [];
+                    byBranch[branch].push(s);
+                });
+
+                const branches = Object.keys(byBranch);
+                if (branches.length === 1) {
+                    byBranch[branches[0]].forEach(s => {
+                        studentSelect.appendChild(createOption(s));
+                    });
+                } else {
+                    branches.forEach(branchName => {
+                        const group = document.createElement('optgroup');
+                        group.label = `📍 ${branchName}`;
+                        byBranch[branchName].forEach(s => {
+                            group.appendChild(createOption(s));
+                        });
+                        studentSelect.appendChild(group);
+                    });
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                studentSelect.innerHTML = '<option value="">❌ خطأ في التحميل</option>';
+            });
+    });
+
+    function createOption(s) {
+        const option = document.createElement('option');
+        option.value = s.id;
+        option.textContent = s.label || s.name;
+        if (!s.can_pay) {
+            option.disabled = true;
+            option.style.color = '#999';
+        }
+        return option;
+    }
+
+    // لما يتغير الطالب
+    studentSelect.addEventListener('change', function() {
+        const studentId = this.value;
+        const type = incomeTypeSelect.value;
+
+        if (!studentId) {
+            resetDisplay();
+            return;
+        }
+
+        fetch(`/transactions/ajax/get-student-payment-info/?student_id=${studentId}&income_type=${type}`)
+            .then(r => r.json())
+            .then(data => {
+                console.log('Data received:', data);
+                currentData = data;
+                displayStudentData(data);
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                showError('حدث خطأ في جلب البيانات');
+            });
+    });
+
+    function displayStudentData(data) {
+        // ✅ عرض الكورس وتعبئته
+        if (data.course) {
+            if (courseSelect) {
+                courseSelect.innerHTML = `<option value="${data.course.id}" selected>${data.course.name}</option>`;
+            }
+            if (courseInfoDiv) {
+                courseInfoDiv.innerHTML = `
+                    <div class="alert alert-info mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-graduation-cap fa-2x me-3"></i>
+                            <div>
+                                <strong>📚 الدورة/الدبلومة:</strong>
+                                <div class="h5 mb-0">${data.course.name}</div>
+                                <small class="text-muted">سعر الدورة: ${Number(data.course.price).toLocaleString()} ر.س</small>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // ✅ عرض الأسعار
+        if (priceInfoDiv) {
+            priceInfoDiv.innerHTML = `
+                <div class="card border-primary mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <i class="fas fa-calculator"></i> ملخص الحساب
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-4 border-end">
+                                <small class="text-muted d-block">السعر الكلي</small>
+                                <div class="h4 mb-0 text-primary">${Number(data.total_price).toLocaleString()} ر.س</div>
+                            </div>
+                            <div class="col-4 border-end">
+                                <small class="text-muted d-block">المدفوع</small>
+                                <div class="h4 mb-0 text-success">${Number(data.total_paid).toLocaleString()} ر.س</div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted d-block">المتبقي</small>
+                                <div class="h4 mb-0 text-danger">${Number(data.remaining_amount).toLocaleString()} ر.س</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ✅ عرض خيارات الدفع
+        if (data.error) {
+            showError(data.message);
+            submitBtn.disabled = true;
+        } else {
+            showPaymentOptions(data);
+            submitBtn.disabled = false;
+        }
+    }
+
+    function showPaymentOptions(data) {
+        if (!paymentOptionsDiv) return;
+
+        let html = `
+            <div class="card border-success">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-money-bill-wave"></i>
+                    ${data.amount_label || 'المبلغ المطلوب'}
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="input-group input-group-lg">
+                            <input type="number" class="form-control text-center fw-bold"
+                                   id="amount-display" value="${data.suggested_amount}"
+                                   step="0.01" min="1" max="${data.max_allowed || data.remaining_amount}"
+                                   style="font-size: 1.5rem;">
+                            <span class="input-group-text">ر.س</span>
+                        </div>
+                        <small class="text-muted d-block mt-1">${data.message || ''}</small>
+                    </div>
+        `;
+
+        if (data.options && data.options.length > 0) {
+            html += '<div class="row g-2">';
+            data.options.forEach(opt => {
+                const btnClass = opt.type === 'full' ? 'btn-success' :
+                                opt.type === 'double' ? 'btn-info' : 'btn-primary';
+                html += `
+                    <div class="col-md-6">
+                        <button type="button" class="btn ${btnClass} w-100"
+                                onclick="setAmount(${opt.amount}, this)">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span>${opt.label}</span>
+                                <span class="badge bg-light text-dark">${Number(opt.amount).toLocaleString()} ر.س</span>
+                            </div>
+                            <small class="d-block text-start opacity-75">${opt.description || ''}</small>
+                        </button>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+
+        html += '</div></div>';
+        paymentOptionsDiv.innerHTML = html;
+
+        // ✅ تعبئة الحقل المخفي
+        if (amountInput) {
+            amountInput.value = data.suggested_amount;
+        }
+
+        // ✅ تحديث المبلغ لما يتغير
+        const displayInput = document.getElementById('amount-display');
+        if (displayInput) {
+            displayInput.addEventListener('input', function() {
+                if (amountInput) amountInput.value = this.value;
+                // validation
+                const val = parseFloat(this.value);
+                const max = parseFloat(this.max);
+                if (val > max) {
+                    this.classList.add('is-invalid');
+                    submitBtn.disabled = true;
+                } else {
+                    this.classList.remove('is-invalid');
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    function resetDisplay() {
+        if (courseInfoDiv) courseInfoDiv.innerHTML = '';
+        if (priceInfoDiv) priceInfoDiv.innerHTML = '';
+        if (paymentOptionsDiv) {
+            paymentOptionsDiv.innerHTML = `
+                <div class="text-muted text-center py-4 border rounded">
+                    <i class="fas fa-hand-pointer fa-2x mb-2 text-muted"></i>
+                    <p class="mb-0">اختر الطالب لعرض خيارات الدفع</p>
+                </div>
+            `;
+        }
+        if (amountInput) amountInput.value = '';
+        if (courseSelect) courseSelect.innerHTML = '<option value="">---------</option>';
+        submitBtn.disabled = true;
+    }
+
+    function showError(msg) {
+        if (paymentOptionsDiv) {
+            paymentOptionsDiv.innerHTML = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>تنبيه:</strong> ${msg}
+                </div>
+            `;
+        }
+    }
+});
+
+function setAmount(amount, btnElement) {
+    const amountInput = document.getElementById('{{ form.amount.id_for_label }}');
+    const displayInput = document.getElementById('amount-display');
+
+    if (amountInput) amountInput.value = amount;
+    if (displayInput) {
+        displayInput.value = amount;
+        displayInput.classList.remove('is-invalid');
+    }
+
+    document.querySelectorAll('#payment-options .btn').forEach(btn => {
+        btn.classList.remove('active', 'border-3');
+    });
+
+    if (btnElement) {
+        btnElement.classList.add('active', 'border-3');
+    }
+
+    document.getElementById('submit-btn').disabled = false;
+}
+</script>
 {% endblock %}

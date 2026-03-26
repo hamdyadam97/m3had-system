@@ -5,9 +5,45 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="mb-0 fw-bold"><i class="fas fa-book-open text-primary me-2"></i> الدورات والبرامج التدريبية</h2>
-    {% if user.is_superuser or user.user_type == 'admin' %}
-    <a href="{% url 'courses:course_create' %}" class="btn btn-primary"><i class="fas fa-plus-circle"></i> إضافة دورة جديدة</a>
-    {% endif %}
+
+    <div class="d-flex gap-2">
+        <div class="btn-group">
+            <a href="{% url 'courses:course_export_excel' %}" class="btn btn-outline-success">
+                <i class="fas fa-file-excel"></i> Excel
+            </a>
+            <a href="{% url 'courses:course_export_pdf' %}" class="btn btn-outline-danger">
+                <i class="fas fa-file-pdf"></i> PDF
+            </a>
+        </div>
+
+        {% if user.is_superuser or user.user_type == 'admin' %}
+        <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#importModal">
+            <i class="fas fa-file-import"></i> استيراد
+        </button>
+
+        <a href="{% url 'courses:course_create' %}" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> إضافة دورة
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST" action="{% url 'courses:course_import_excel' %}" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="modal-content">
+                <div class="modal-header"><h5>استيراد دورات من ملف Excel</h5></div>
+                <div class="modal-body">
+                    <input type="file" name="excel_file" class="form-control" required accept=".xlsx, .xls">
+                    <p class="small text-muted mt-2">الأعمدة المطلوبة: كود الدورة، اسم الدورة، السعر، المدة</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">رفع ومعالجة</button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 <div class="row g-4">
@@ -57,4 +93,5 @@
     .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15)!important; }
     .transition { transition: all 0.3s ease; }
 </style>
+
 {% endblock %}

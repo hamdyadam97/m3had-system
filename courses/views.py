@@ -126,3 +126,90 @@ def course_delete_soft(request, pk):
         messages.warning(request, f'تم أرشفة الدورة "{course.name}" بنجاح.')
         return redirect('courses:course_list')
     return render(request, 'courses/course_confirm_delete.html', {'course': course})
+
+
+import pandas as pd
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from datetime import date
+
+
+# --- دالة مساعدة للحصول على الدورات المفلترة حسب الصلاحية ---
+def get_filtered_courses(request):
+    user = request.user
+    queryset = Course.objects.filter(is_active=True).order_by('-id')
+
+    if not (user.is_superuser or user.user_type == 'admin'):
+        if user.user_type == 'regional_manager':
+            queryset = queryset.filter(branches__in=user.managed_branches.all()).distinct()
+        elif user.branch:
+            queryset = queryset.filter(branches=user.branch)
+        else:
+            queryset = queryset.none()
+    return queryset
+
+
+# --- تصدير الدورات إلى Excel ---
+@login_required
+def course_export_excel(request):
+    courses = get_filtered_courses(request)
+    data = []
+    for c in courses:
+        data.append({
+            'كود الدورة': c.code,
+            'اسم الدورة': c.name,
+            'النوع': c.get_course_type_display(),
+            'السعر': c.price,
+            'المدة (أيام)': c.duration_days,
+            'الوصف': c.description,
+        })
+
+    df = pd.DataFrame(data)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="courses_list.xlsx"'
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='الدورات')
+    return response
+
+
+# --- تصدير الدورات إلى PDF ملون واحترافي ---
+@login_required
+def course_export_pdf(request):
+    courses = get_filtered_courses(request)
+    html_string = render_to_string('courses/course_pdf_template.html', {
+        'courses': courses,
+        'today': date.today(),
+    })
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="courses_report.pdf"'
+    HTML(string=html_string, base_url=request.build_absolute_uri()).write_pdf(response)
+    return response
+
+
+# --- استيراد دورات من Excel ---
+@login_required
+@permission_required('courses.add_course', raise_exception=True)
+def course_import_excel(request):
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        file = request.FILES['excel_file']
+        try:
+            df = pd.read_excel(file)
+            for _, row in df.iterrows():
+                course = Course.objects.create(
+                    code=row['كود الدورة'],
+                    name=row['اسم الدورة'],
+                    course_type='course',  # أو حسب القيمة في الملف
+                    price=row['السعر'],
+                    duration_days=row['المدة'],
+                    description=row.get('الوصف', '')
+                )
+                # إذا كان المستخدم يتبع فرعاً معيناً نربط الدورة به تلقائياً
+                if not request.user.is_superuser and request.user.branch:
+                    course.branches.add(request.user.branch)
+            messages.success(request, 'تم استيراد الدورات بنجاح!')
+        except Exception as e:
+            messages.error(request, f'خطأ في الاستيراد: {e}')
+    return redirect('courses:course_list')
+
+

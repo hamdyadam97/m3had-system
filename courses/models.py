@@ -4,7 +4,7 @@ from branches.models import Branch
 
 class Course(models.Model):
     COURSE_TYPE_CHOICES = [
-        ('diploma', 'دبلومة'),
+        ('diploma', 'دبلوم'),
         ('course', 'دورة'),
     ]
     
