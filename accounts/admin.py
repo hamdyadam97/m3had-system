@@ -1,22 +1,103 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
+from django.db.models import Q
 from .models import User
 
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    list_display = ['username', 'first_name', 'last_name', 'user_type', 'branch', 'is_active', 'date_joined']
-    list_filter = ['user_type', 'is_active', 'branch']
-    search_fields = ['username', 'first_name', 'last_name', 'phone']
+    # الحقول المعروضة في قائمة المستخدمين
+    list_display = [
+        'username', 'get_full_name', 'email', 'user_type', 
+        'branch', 'get_groups', 'is_active', 'date_joined'
+    ]
     
+    # الفلاتر الجانبية
+    list_filter = [
+        'user_type', 'is_active', 'branch', 'groups', 
+        'date_joined', 'is_superuser'
+    ]
+    
+    # حقول البحث
+    search_fields = [
+        'username', 'first_name', 'last_name', 'email', 
+        'phone', 'branch__name', 'user_type'
+    ]
+    
+    # الترتيب الافتراضي
+    ordering = ['-date_joined']
+    
+    # عدد العناصر في الصفحة
+    list_per_page = 25
+    
+    # حقول قابلة للتعديل مباشرة في القائمة
+    list_editable = ['is_active']
+    
+    # إظهار حقول إضافية في صفحة التفاصيل
     fieldsets = UserAdmin.fieldsets + (
         ('معلومات إضافية', {
-            'fields': ('user_type', 'branch', 'phone'),
+            'fields': ('user_type', 'branch', 'phone', 'managed_branches'),
         }),
     )
     
+    # إظهار نفس الحقول عند إضافة مستخدم جديد
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('معلومات إضافية', {
             'fields': ('user_type', 'branch', 'phone'),
         }),
     )
+    
+    # تحسين عرض الحقول المتعددة
+    filter_horizontal = ['groups', 'user_permissions', 'managed_branches']
+    
+    # تحسين عرض البحث
+    def get_search_results(self, request, queryset, search_term):
+        """
+        تحسين البحث ليدعم البحث بالاسم الكامل والبريد الإلكتروني
+        """
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+        
+        if search_term:
+            # البحث بالاسم الكامل (دمج الاسم الأول والأخير)
+            queryset |= self.model.objects.filter(
+                Q(first_name__icontains=search_term) | 
+                Q(last_name__icontains=search_term) |
+                Q(email__icontains=search_term)
+            )
+        
+        return queryset, use_distinct
+    
+    # دالة مساعدة لعرض الاسم الكامل
+    @admin.display(description='الاسم الكامل')
+    def get_full_name(self, obj):
+        return obj.get_full_name() or '-'
+    
+    # دالة مساعدة لعرض المجموعات
+    @admin.display(description='مجموعات الصلاحيات')
+    def get_groups(self, obj):
+        return ', '.join([g.name for g in obj.groups.all()]) or '-'
+    
+    # تحسين عرض اسم الفرع
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == "branch":
+            kwargs["empty_label"] = "اختر الفرع"
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    
+    # إضافة أزرار إجراءات مخصصة
+    actions = ['activate_users', 'deactivate_users', 'make_staff', 'remove_staff']
+    
+    @admin.action(description='تفعيل المستخدمين المحددين')
+    def activate_users(self, request, queryset):
+        queryset.update(is_active=True)
+    
+    @admin.action(description='تعطيل المستخدمين المحددين')
+    def deactivate_users(self, request, queryset):
+        queryset.update(is_active=False)
+    
+    @admin.action(description='منح صلاحية موظف (staff)')
+    def make_staff(self, request, queryset):
+        queryset.update(is_staff=True)
+    
+    @admin.action(description='إلغاء صلاحية موظف (staff)')
+    def remove_staff(self, request, queryset):
+        queryset.update(is_staff=False)

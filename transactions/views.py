@@ -1,3 +1,4 @@
+import logging
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -6,11 +7,14 @@ from django.contrib import messages
 from django.db.models import Sum
 from datetime import date, timezone
 
+logger = logging.getLogger(__name__)
+
 from branches.models import Branch
 from students.models import Student
 from .models import Income, Expense, DailySummary
 from .forms import IncomeForm, ExpenseForm
 from django.core.paginator import Paginator
+from accounts.notifications import notify_managers_on_payment
 
 
 @login_required
@@ -77,6 +81,14 @@ def income_add(request):
 
             try:
                 income.save()
+                
+                # إرسال الإشعارات للمديرين والطالب
+                try:
+                    print('before send ')
+                    notify_managers_on_payment(income)
+                except Exception as notify_error:
+                    logger.error(f"Notification error: {notify_error}")
+                
                 messages.success(request, 'تم تسجيل الإيراد بنجاح!')
                 return redirect('transactions:income_list')
             except Exception as e:

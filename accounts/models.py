@@ -36,3 +36,86 @@ class User(AbstractUser):
     
     def is_admin(self):
         return self.user_type == 'admin'
+    
+    def get_unread_notifications_count(self):
+        """عدد الإشعارات غير المقروءة"""
+        return self.notifications.filter(is_read=False).count()
+
+
+class Notification(models.Model):
+    """نظام الإشعارات الداخلية"""
+    
+    NOTIFICATION_TYPES = [
+        ('income', 'إيراد جديد'),
+        ('expense', 'مصروف جديد'),
+        ('installment', 'قسط مستحق'),
+        ('registration', 'تسجيل جديد'),
+        ('system', 'إشعار نظام'),
+    ]
+    
+    recipient = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='notifications',
+        verbose_name='المستلم'
+    )
+    
+    notification_type = models.CharField(
+        max_length=20, 
+        choices=NOTIFICATION_TYPES,
+        verbose_name='نوع الإشعار'
+    )
+    
+    title = models.CharField(max_length=200, verbose_name='العنوان')
+    message = models.TextField(verbose_name='الرسالة')
+    
+    # بيانات إضافية للربط
+    related_income = models.ForeignKey(
+        'transactions.Income',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='notifications',
+        verbose_name='الإيراد المرتبط'
+    )
+    
+    related_expense = models.ForeignKey(
+        'transactions.Expense',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='notifications',
+        verbose_name='المصروف المرتبط'
+    )
+    
+    related_student = models.ForeignKey(
+        'students.Student',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='account_notifications',
+        verbose_name='الطالب المرتبط'
+    )
+    
+    # حالة الإشعار
+    is_read = models.BooleanField(default=False, verbose_name='مقروء')
+    read_at = models.DateTimeField(null=True, blank=True, verbose_name='تاريخ القراءة')
+    
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
+    
+    class Meta:
+        verbose_name = 'إشعار'
+        verbose_name_plural = 'الإشعارات'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.title} - {self.recipient.get_full_name()}"
+    
+    def mark_as_read(self):
+        """تحديد الإشعار كمقروء"""
+        if not self.is_read:
+            from django.utils import timezone
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.save(update_fields=['is_read', 'read_at'])

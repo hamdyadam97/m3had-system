@@ -5,3 +5,4 @@ sqlparse==0.5.5
 tzdata==2025.3
 python-dateutil==2.9.0
 requests==2.32.3
+python-dotenv==1.2.2

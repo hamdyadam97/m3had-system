@@ -127,13 +127,41 @@ class InstallmentAdmin(admin.ModelAdmin):
 
 @admin.register(NotificationSettings)
 class NotificationSettingsAdmin(admin.ModelAdmin):
-    list_display = ['email_enabled', 'whatsapp_enabled', 'contact_phone', 'updated_at']
+    """إدارة إعدادات الإشعارات"""
+    
+    fieldsets = (
+        ('إعدادات البريد الإلكتروني', {
+            'fields': ('email_enabled', 'email_host', 'email_port', 'email_use_tls', 
+                      'email_from_address'),
+            'description': 'إعدادات SMTP لإرسال الإيميلات. ملاحظة: اسم المستخدم وكلمة المرور يُضافان في ملف .env (EMAIL_HOST_USER, EMAIL_HOST_PASSWORD)'
+        }),
+        ('إعدادات واتساب', {
+            'fields': ('whatsapp_enabled', 'whatsapp_instance_id', 'whatsapp_api_url'),
+            'description': 'إعدادات UltraMsg API لإرسال رسائل واتساب. ملاحظة: مفتاح API يُضاف في ملف .env (WHATSAPP_API_TOKEN)'
+        }),
+        ('قوالب الرسائل', {
+            'fields': ('reminder_2days_template', 'reminder_1day_template', 
+                      'reminder_due_template', 'overdue_template'),
+            'classes': ('collapse',),
+            'description': 'متغيرات متاحة: {student_name}, {installment_number}, {amount}, {due_date}, {overdue_days}, {contact_phone}'
+        }),
+        ('الإعدادات العامة', {
+            'fields': ('reminder_2days_before', 'reminder_1day_before', 
+                      'reminder_on_due_date', 'send_overdue_notice', 'contact_phone')
+        }),
+    )
+    
+    readonly_fields = ['created_at', 'updated_at']
     
     def has_add_permission(self, request):
         # السماح بإنشاء واحد فقط
         if self.model.objects.count() >= 1:
             return False
         return super().has_add_permission(request)
+    
+    def has_delete_permission(self, request, obj=None):
+        # منع الحذف
+        return False
 
 
 @admin.register(NotificationLog)

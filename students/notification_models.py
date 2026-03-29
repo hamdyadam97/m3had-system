@@ -9,14 +9,11 @@ class NotificationSettings(models.Model):
     email_enabled = models.BooleanField(default=True, verbose_name='تفعيل إشعارات البريد')
     email_host = models.CharField(max_length=255, blank=True, verbose_name='خادم البريد (SMTP)')
     email_port = models.PositiveIntegerField(default=587, verbose_name='منفذ البريد')
-    email_host_user = models.CharField(max_length=255, blank=True, verbose_name='اسم مستخدم البريد')
-    email_host_password = models.CharField(max_length=255, blank=True, verbose_name='كلمة مرور البريد')
     email_use_tls = models.BooleanField(default=True, verbose_name='استخدام TLS')
     email_from_address = models.EmailField(blank=True, verbose_name='عنوان المرسل')
     
     # إعدادات واتساب
     whatsapp_enabled = models.BooleanField(default=True, verbose_name='تفعيل إشعارات واتساب')
-    whatsapp_api_key = models.CharField(max_length=500, blank=True, verbose_name='مفتاح API واتساب')
     whatsapp_api_url = models.URLField(
         default='https://api.ultramsg.com/instance{instance_id}/messages/chat',
         blank=True,

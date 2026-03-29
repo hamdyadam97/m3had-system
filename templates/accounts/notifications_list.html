@@ -1,0 +1,310 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}الإشعارات - نظام إدارة المعاهد{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border: none;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        transition: all 0.3s;
+        border-right: 4px solid transparent;
+    }
+    .notification-card:hover {
+        transform: translateX(-5px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    .notification-card.unread {
+        background-color: #e3f2fd;
+        border-right-color: #2196f3;
+    }
+    .notification-card.read {
+        background-color: #f8f9fa;
+        opacity: 0.8;
+    }
+    .notification-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: white;
+    }
+    .icon-income { background: linear-gradient(135deg, #11998e, #38ef7d); }
+    .icon-expense { background: linear-gradient(135deg, #eb3349, #f45c43); }
+    .icon-installment { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .icon-registration { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .icon-system { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    
+    .notification-time {
+        font-size: 12px;
+        color: #6c757d;
+    }
+    .notification-title {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 5px;
+    }
+    .notification-message {
+        color: #6c757d;
+        font-size: 14px;
+    }
+    
+    .filter-btn {
+        border-radius: 25px;
+        padding: 8px 20px;
+        margin-left: 10px;
+        transition: all 0.3s;
+    }
+    .filter-btn.active {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-color: transparent;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+    .empty-state i {
+        font-size: 80px;
+        color: #dee2e6;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- رأس الصفحة -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1"><i class="fas fa-bell text-primary me-2"></i>الإشعارات</h2>
+            <p class="text-muted mb-0">متابعة كل التنبيهات والإشعارات الخاصة بك</p>
+        </div>
+        {% if unread_notifications %}
+        <button class="btn btn-outline-primary" onclick="markAllAsRead()">
+            <i class="fas fa-check-double me-2"></i>تحديد الكل كمقروء
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- فلاتر -->
+    <div class="mb-4">
+        <button class="btn btn-outline-secondary filter-btn active" onclick="filterNotifications('all')">
+            الكل
+        </button>
+        <button class="btn btn-outline-secondary filter-btn" onclick="filterNotifications('unread')">
+            غير مقروء <span class="badge bg-danger ms-1">{{ unread_notifications|length }}</span>
+        </button>
+        <button class="btn btn-outline-secondary filter-btn" onclick="filterNotifications('read')">
+            مقروء
+        </button>
+    </div>
+
+    <!-- قائمة الإشعارات -->
+    <div id="notifications-container">
+        {% if unread_notifications or read_notifications %}
+            <!-- غير مقروءة -->
+            {% for notif in unread_notifications %}
+            <div class="card notification-card unread" data-status="unread" data-type="{{ notif.notification_type }}">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="notification-icon icon-{{ notif.notification_type }}">
+                                <i class="fas 
+                                    {% if notif.notification_type == 'income' %}fa-money-bill-wave
+                                    {% elif notif.notification_type == 'expense' %}fa-file-invoice-dollar
+                                    {% elif notif.notification_type == 'installment' %}fa-calendar-check
+                                    {% elif notif.notification_type == 'registration' %}fa-user-plus
+                                    {% else %}fa-bell{% endif %}">
+                                </i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 me-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="notification-title">{{ notif.title }}</div>
+                                    <div class="notification-message">{{ notif.message }}</div>
+                                    <div class="notification-time mt-2">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ notif.created_at|timesince }}
+                                    </div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end">
+                                    <span class="badge bg-primary mb-2">جديد</span>
+                                    <button class="btn btn-sm btn-link text-decoration-none" onclick="markAsRead({{ notif.id }}, this)">
+                                        تحديد كمقروء
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            <!-- مقروءة -->
+            {% for notif in read_notifications %}
+            <div class="card notification-card read" data-status="read" data-type="{{ notif.notification_type }}">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="notification-icon icon-{{ notif.notification_type }}">
+                                <i class="fas 
+                                    {% if notif.notification_type == 'income' %}fa-money-bill-wave
+                                    {% elif notif.notification_type == 'expense' %}fa-file-invoice-dollar
+                                    {% elif notif.notification_type == 'installment' %}fa-calendar-check
+                                    {% elif notif.notification_type == 'registration' %}fa-user-plus
+                                    {% else %}fa-bell{% endif %}">
+                                </i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 me-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <div class="notification-title">{{ notif.title }}</div>
+                                    <div class="notification-message">{{ notif.message }}</div>
+                                    <div class="notification-time mt-2">
+                                        <i class="far fa-clock me-1"></i>
+                                        {{ notif.created_at|timesince }}
+                                    </div>
+                                </div>
+                                {% if notif.related_income %}
+                                <a href="{% url 'transactions:income_detail' notif.related_income.id %}" class="btn btn-sm btn-outline-primary">
+                                    عرض التفاصيل
+                                </a>
+                                {% elif notif.related_student %}
+                                <a href="{% url 'students:student_detail' notif.related_student.id %}" class="btn btn-sm btn-outline-primary">
+                                    عرض الطالب
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-bell-slash"></i>
+                <h4>لا توجد إشعارات</h4>
+                <p class="text-muted">ستظهر هنا الإشعارات الجديدة عندما تصلك</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function markAsRead(notificationId, btn) {
+        fetch(`/accounts/notifications/${notificationId}/mark-read/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const card = btn.closest('.notification-card');
+                card.classList.remove('unread');
+                card.classList.add('read');
+                card.setAttribute('data-status', 'read');
+                
+                // إخفاء شارة "جديد"
+                const badge = card.querySelector('.badge');
+                if (badge) badge.remove();
+                
+                // إخفاء الزر
+                btn.remove();
+                
+                // تحديث العدد في الـ navbar
+                updateNavbarBadge();
+            }
+        });
+    }
+    
+    function markAllAsRead() {
+        if (!confirm('هل أنت متأكد من تحديد كل الإشعارات كمقروءة؟')) return;
+        
+        fetch('{% url "accounts:mark_all_notifications_read" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                document.querySelectorAll('.notification-card.unread').forEach(card => {
+                    card.classList.remove('unread');
+                    card.classList.add('read');
+                    card.setAttribute('data-status', 'read');
+                    
+                    const badge = card.querySelector('.badge');
+                    if (badge) badge.remove();
+                    
+                    const btn = card.querySelector('.btn-link');
+                    if (btn) btn.remove();
+                });
+                
+                updateNavbarBadge();
+            }
+        });
+    }
+    
+    function filterNotifications(type) {
+        // تحديث الأزرار
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // تصفية الإشعارات
+        document.querySelectorAll('.notification-card').forEach(card => {
+            if (type === 'all') {
+                card.style.display = 'block';
+            } else {
+                card.style.display = card.getAttribute('data-status') === type ? 'block' : 'none';
+            }
+        });
+    }
+    
+    function updateNavbarBadge() {
+        const unreadCards = document.querySelectorAll('.notification-card.unread');
+        const badge = document.getElementById('notification-badge');
+        
+        if (badge) {
+            if (unreadCards.length > 0) {
+                badge.textContent = unreadCards.length;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        }
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}

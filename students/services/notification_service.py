@@ -91,18 +91,18 @@ class NotificationService:
                 status='pending'
             )
             
-            # إعدادات Django للبريد
+            # إعدادات Django للبريد (المفاتيح الحساسة من settings/.env فقط)
             from django.core.mail import get_connection
             
             connection = get_connection(
                 host=settings_obj.email_host or settings.EMAIL_HOST,
                 port=settings_obj.email_port or settings.EMAIL_PORT,
-                username=settings_obj.email_host_user or settings.EMAIL_HOST_USER,
-                password=settings_obj.email_host_password or settings.EMAIL_HOST_PASSWORD,
+                username=settings.EMAIL_HOST_USER,  # من .env فقط
+                password=settings.EMAIL_HOST_PASSWORD,  # من .env فقط
                 use_tls=settings_obj.email_use_tls,
             )
             
-            from_email = settings_obj.email_from_address or settings.DEFAULT_FROM_EMAIL
+            from_email = settings_obj.email_from_address or settings.EMAIL_HOST_USER or settings.DEFAULT_FROM_EMAIL
             
             send_mail(
                 subject=subject,
@@ -136,8 +136,12 @@ class NotificationService:
         """إرسال رسالة واتساب"""
         settings_obj = cls.get_settings()
         
-        if not settings_obj.whatsapp_api_key or not settings_obj.whatsapp_instance_id:
-            logger.warning("WhatsApp API not configured")
+        # المفاتيح الحساسة من settings/.env فقط
+        whatsapp_api_token = getattr(settings, 'WHATSAPP_API_TOKEN', '')
+        whatsapp_instance_id = settings_obj.whatsapp_instance_id or getattr(settings, 'WHATSAPP_INSTANCE_ID', '')
+        
+        if not whatsapp_api_token or not whatsapp_instance_id:
+            logger.warning("WhatsApp API not configured (WHATSAPP_API_TOKEN or WHATSAPP_INSTANCE_ID missing in .env)")
             return False
         
         try:
@@ -157,11 +161,11 @@ class NotificationService:
             
             # إرسال عبر API
             api_url = settings_obj.whatsapp_api_url.format(
-                instance_id=settings_obj.whatsapp_instance_id
+                instance_id=whatsapp_instance_id
             )
             
             payload = {
-                'token': settings_obj.whatsapp_api_key,
+                'token': whatsapp_api_token,
                 'to': formatted_phone,
                 'body': message,
             }
@@ -203,9 +207,9 @@ class NotificationService:
         
         # إضافة كود الدولة إذا لم يكن موجوداً
         if phone.startswith('0'):
-            phone = '966' + phone[1:]  # افتراض السعودية
+            phone = '+966' + phone[1:]  # افتراض السعودية
         elif not phone.startswith('966'):
-            phone = '966' + phone
+            phone = '+966' + phone
         
         return phone
     

@@ -1,42 +1,567 @@
-{% extends 'base.html' %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول - نظام إدارة المعاهد</title>
+    
+    <!-- Bootstrap RTL -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Animate.css -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    
+    <style>
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+        
+        /* Background Animation */
+        .bg-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+        
+        .bg-shapes li {
+            position: absolute;
+            display: block;
+            list-style: none;
+            width: 20px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            animation: animate 25s linear infinite;
+            bottom: -150px;
+            border-radius: 50%;
+        }
+        
+        .bg-shapes li:nth-child(1) { left: 25%; width: 80px; height: 80px; animation-delay: 0s; }
+        .bg-shapes li:nth-child(2) { left: 10%; width: 20px; height: 20px; animation-delay: 2s; animation-duration: 12s; }
+        .bg-shapes li:nth-child(3) { left: 70%; width: 20px; height: 20px; animation-delay: 4s; }
+        .bg-shapes li:nth-child(4) { left: 40%; width: 60px; height: 60px; animation-delay: 0s; animation-duration: 18s; }
+        .bg-shapes li:nth-child(5) { left: 65%; width: 20px; height: 20px; animation-delay: 0s; }
+        .bg-shapes li:nth-child(6) { left: 75%; width: 110px; height: 110px; animation-delay: 3s; }
+        .bg-shapes li:nth-child(7) { left: 35%; width: 150px; height: 150px; animation-delay: 7s; }
+        .bg-shapes li:nth-child(8) { left: 50%; width: 25px; height: 25px; animation-delay: 15s; animation-duration: 45s; }
+        .bg-shapes li:nth-child(9) { left: 20%; width: 15px; height: 15px; animation-delay: 2s; animation-duration: 35s; }
+        .bg-shapes li:nth-child(10) { left: 85%; width: 150px; height: 150px; animation-delay: 0s; animation-duration: 11s; }
+        
+        @keyframes animate {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; border-radius: 0; }
+            100% { transform: translateY(-1000px) rotate(720deg); opacity: 0; border-radius: 50%; }
+        }
+        
+        /* Login Container */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+        
+        .login-wrapper {
+            display: flex;
+            background: white;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        /* Left Side - Image/Info */
+        .login-info {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .login-info::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.5; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        
+        .login-info .logo {
+            font-size: 80px;
+            margin-bottom: 30px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        
+        .login-info h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .login-info p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            line-height: 1.8;
+        }
+        
+        .features-list {
+            margin-top: 40px;
+            text-align: right;
+        }
+        
+        .features-list li {
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        
+        .features-list i {
+            margin-left: 10px;
+            color: #ffd700;
+        }
+        
+        /* Right Side - Form */
+        .login-form-section {
+            flex: 1;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .form-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .form-header h2 {
+            color: #2d3748;
+            font-weight: 700;
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+        }
+        
+        .form-header p {
+            color: #718096;
+        }
+        
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .form-label {
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 8px;
+            display: block;
+        }
+        
+        .input-group-custom {
+            position: relative;
+        }
+        
+        .input-group-custom .input-icon {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+            z-index: 10;
+            transition: color 0.3s;
+        }
+        
+        .input-group-custom input {
+            width: 100%;
+            padding: 15px 45px 15px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: all 0.3s;
+            background: #f7fafc;
+        }
+        
+        .input-group-custom input:focus {
+            border-color: #667eea;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+        
+        .input-group-custom input:focus + .input-icon,
+        .input-group-custom input:not(:placeholder-shown) + .input-icon {
+            color: #667eea;
+        }
+        
+        .password-toggle {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+            cursor: pointer;
+            z-index: 10;
+            transition: color 0.3s;
+        }
+        
+        .password-toggle:hover {
+            color: #667eea;
+        }
+        
+        /* Validation Styling */
+        .form-group.error input {
+            border-color: #e53e3e;
+            background-color: #fff5f5;
+        }
+        
+        .form-group.error .input-icon {
+            color: #e53e3e;
+        }
+        
+        .error-message {
+            color: #e53e3e;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .form-group.error .error-message {
+            display: block;
+        }
+        
+        /* Submit Button */
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-login::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+        
+        .btn-login:hover::before {
+            left: 100%;
+        }
+        
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-login:active {
+            transform: translateY(0);
+        }
+        
+        .btn-login:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        
+        .btn-login .spinner {
+            display: none;
+        }
+        
+        .btn-login.loading .spinner {
+            display: inline-block;
+        }
+        
+        .btn-login.loading .btn-text {
+            display: none;
+        }
+        
+        /* Alert Styling */
+        .alert-custom {
+            border-radius: 12px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .alert-danger-custom {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+        }
+        
+        /* Responsive */
+        @media (max-width: 992px) {
+            .login-wrapper {
+                flex-direction: column;
+            }
+            
+            .login-info {
+                padding: 40px 30px;
+            }
+            
+            .login-info h1 {
+                font-size: 2rem;
+            }
+            
+            .login-form-section {
+                padding: 40px 30px;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .login-info {
+                display: none;
+            }
+            
+            .login-form-section {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Animation -->
+    <ul class="bg-shapes">
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+        <li></li>
+    </ul>
 
-{% block title %}تسجيل الدخول - نظام إدارة المعاهد{% endblock %}
-
-{% block auth_content %}
-<div class="login-page">
-    <div class="login-card animate__animated animate__fadeIn">
-        <i class="fas fa-graduation-cap"></i>
-        <h2>نظام إدارة المعاهد</h2>
-        <p class="text-muted">يرجى تسجيل الدخول للمتابعة</p>
-
-        {% if form.errors %}
-        <div class="alert alert-danger p-2 small">
-            <i class="fas fa-exclamation-circle"></i> اسم المستخدم أو كلمة المرور غير صحيحة.
+    <div class="login-container">
+        <div class="login-wrapper animate__animated animate__fadeInUp">
+            <!-- Left Side -->
+            <div class="login-info">
+                <div class="logo">
+                    <i class="fas fa-graduation-cap"></i>
+                </div>
+                <h1>نظام إدارة المعاهد</h1>
+                <p>منصة متكاملة لإدارة الحركة اليومية لفروع المعاهد التعليمية</p>
+                
+                <ul class="features-list list-unstyled">
+                    <li><i class="fas fa-check-circle"></i> إدارة الطلاب والتسجيلات</li>
+                    <li><i class="fas fa-check-circle"></i> متابعة الإيرادات والمصروفات</li>
+                    <li><i class="fas fa-check-circle"></i> تقارير مالية شاملة</li>
+                    <li><i class="fas fa-check-circle"></i> نظام تقسيط ذكي</li>
+                </ul>
+            </div>
+            
+            <!-- Right Side - Form -->
+            <div class="login-form-section">
+                <div class="form-header">
+                    <h2>مرحباً بعودتك! 👋</h2>
+                    <p>يرجى تسجيل الدخول للوصول إلى حسابك</p>
+                </div>
+                
+                {% if form.errors %}
+                <div class="alert-custom alert-danger-custom animate__animated animate__shake">
+                    <i class="fas fa-exclamation-circle fa-lg"></i>
+                    <div>
+                        <strong>خطأ في تسجيل الدخول</strong><br>
+                        اسم المستخدم أو كلمة المرور غير صحيحة
+                    </div>
+                </div>
+                {% endif %}
+                
+                <form method="post" id="loginForm" novalidate>
+                    {% csrf_token %}
+                    
+                    <div class="form-group" id="usernameGroup">
+                        <label class="form-label">اسم المستخدم</label>
+                        <div class="input-group-custom">
+                            <input 
+                                type="text" 
+                                name="username" 
+                                id="username"
+                                class="form-control" 
+                                placeholder="أدخل اسم المستخدم"
+                                autocomplete="username"
+                            >
+                            <i class="fas fa-user input-icon"></i>
+                        </div>
+                        <span class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i> يرجى إدخال اسم المستخدم
+                        </span>
+                    </div>
+                    
+                    <div class="form-group" id="passwordGroup">
+                        <label class="form-label">كلمة المرور</label>
+                        <div class="input-group-custom">
+                            <input 
+                                type="password" 
+                                name="password" 
+                                id="password"
+                                class="form-control" 
+                                placeholder="أدخل كلمة المرور"
+                                autocomplete="current-password"
+                            >
+                            <i class="fas fa-lock input-icon"></i>
+                            <i class="fas fa-eye password-toggle" id="togglePassword"></i>
+                        </div>
+                        <span class="error-message">
+                            <i class="fas fa-exclamation-triangle"></i> يرجى إدخال كلمة المرور (6 أحرف على الأقل)
+                        </span>
+                    </div>
+                    
+                    <button type="submit" class="btn-login" id="submitBtn">
+                        <span class="btn-text">
+                            <i class="fas fa-sign-in-alt me-2"></i> دخول للنظام
+                        </span>
+                        <span class="spinner">
+                            <i class="fas fa-circle-notch fa-spin"></i> جاري الدخول...
+                        </span>
+                    </button>
+                </form>
+                
+                <div class="text-center mt-4">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        نظام آمن ومحمي
+                    </small>
+                </div>
+            </div>
         </div>
-        {% endif %}
-
-        <form method="post">
-            {% csrf_token %}
-            <div class="mb-3 text-start">
-                <label class="form-label small fw-bold">اسم المستخدم</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-user"></i></span>
-                    <input type="text" name="username" class="form-control" placeholder="Username" required>
-                </div>
-            </div>
-
-            <div class="mb-4 text-start">
-                <label class="form-label small fw-bold">كلمة المرور</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
-                    <input type="password" name="password" class="form-control" placeholder="Password" required>
-                </div>
-            </div>
-
-            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm">
-                <i class="fas fa-sign-in-alt me-2"></i> دخول للنظام
-            </button>
-        </form>
     </div>
-</div>
-{% endblock %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Form Validation
+        const form = document.getElementById('loginForm');
+        const usernameGroup = document.getElementById('usernameGroup');
+        const passwordGroup = document.getElementById('passwordGroup');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const submitBtn = document.getElementById('submitBtn');
+        const togglePassword = document.getElementById('togglePassword');
+        
+        // Password Toggle
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+        
+        // Validation Functions
+        function validateUsername() {
+            const value = usernameInput.value.trim();
+            if (value.length < 3) {
+                usernameGroup.classList.add('error');
+                return false;
+            }
+            usernameGroup.classList.remove('error');
+            return true;
+        }
+        
+        function validatePassword() {
+            const value = passwordInput.value;
+            if (value.length < 4) {
+                passwordGroup.classList.add('error');
+                return false;
+            }
+            passwordGroup.classList.remove('error');
+            return true;
+        }
+        
+        // Real-time Validation
+        usernameInput.addEventListener('blur', validateUsername);
+        usernameInput.addEventListener('input', function() {
+            if (usernameGroup.classList.contains('error')) {
+                validateUsername();
+            }
+        });
+        
+        passwordInput.addEventListener('blur', validatePassword);
+        passwordInput.addEventListener('input', function() {
+            if (passwordGroup.classList.contains('error')) {
+                validatePassword();
+            }
+        });
+        
+        // Form Submit
+        form.addEventListener('submit', function(e) {
+            const isUsernameValid = validateUsername();
+            const isPasswordValid = validatePassword();
+            
+            if (!isUsernameValid || !isPasswordValid) {
+                e.preventDefault();
+                
+                // Shake animation
+                if (!isUsernameValid) {
+                    usernameGroup.classList.add('animate__animated', 'animate__shakeX');
+                    setTimeout(() => usernameGroup.classList.remove('animate__animated', 'animate__shakeX'), 500);
+                }
+                if (!isPasswordValid) {
+                    passwordGroup.classList.add('animate__animated', 'animate__shakeX');
+                    setTimeout(() => passwordGroup.classList.remove('animate__animated', 'animate__shakeX'), 500);
+                }
+            } else {
+                // Show loading
+                submitBtn.classList.add('loading');
+                submitBtn.disabled = true;
+            }
+        });
+        
+        // Auto-focus username on load
+        window.addEventListener('load', function() {
+            usernameInput.focus();
+        });
+    </script>
+</body>
+</html>

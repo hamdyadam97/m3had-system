@@ -49,7 +49,7 @@ class Income(models.Model):
     payment_location = models.CharField(max_length=10, choices=PAYMENT_LOCATION_CHOICES, verbose_name='مكان الدفع')
     
     # بيانات التحويل البنكي
-    bank_account_number = models.CharField(max_length=50, blank=True, verbose_name='رقم الحساب البنكي')
+    bank_account_number = models.CharField(max_length=50, blank=True, null=True, verbose_name='رقم الحساب البنكي')
     
     # الموظف الذي حصل المبلغ
     collected_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name='حصل بواسطة')

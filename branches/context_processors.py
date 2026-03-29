@@ -26,6 +26,7 @@ def branch_context(request):
             'branches': branches,
             # التعديل هنا: لو هو أدمن خليه دايماً True عشان تظهر "تبديل الفرع"
             'is_global_view': user.is_superuser or user.user_type == 'admin' or (
-                        hasattr(branches, 'count') and branches.count() > 1)
+                    len(branches) > 1
+            )
         }
     return {'branches': [], 'is_global_view': False}

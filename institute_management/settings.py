@@ -11,10 +11,23 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# تحميل متغيرات البيئة من .env
+load_dotenv(BASE_DIR / '.env')
+
+# بيانات الاعتماد من .env (للمفاتيح الحساسة) - الأولوية للـ .env
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL =  os.environ.get('DEFAULT_FROM_EMAIL', '')  # Your verified sender email
+WHATSAPP_API_TOKEN = os.environ.get('WHATSAPP_API_TOKEN', '')
+WHATSAPP_INSTANCE_ID = os.environ.get('WHATSAPP_INSTANCE_ID', '')
+
+print(EMAIL_HOST_USER,'EMAIL_HOST_USER')
+print(EMAIL_HOST_PASSWORD,'EMAIL_HOST_PASSWORD')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
@@ -70,6 +83,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'branches.context_processors.branch_context',
+                'accounts.context_processors.notifications_context',
             ],
         },
     },
@@ -143,3 +157,50 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ==================== Logging Settings ====================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'django.log',
+        },
+        'console': {
+            'level': 'INFO',
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'accounts.notifications': {
+            'handlers': ['file', 'console'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
+# ==================== Email Settings ====================
+# الإعدادات الأساسية (المفاتيح الحساسة تُحمل من .env في أعلى الملف)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+# EMAIL_HOST_USER و EMAIL_HOST_PASSWORD يُحملان من .env (سطر 23-24)
+DEFAULT_FROM_EMAIL = DEFAULT_FROM_EMAIL or ''  # Your verified sender email
+
+# ==================== WhatsApp Settings ====================
+WHATSAPP_PROVIDER = 'ultramsg'
+# WHATSAPP_API_TOKEN و WHATSAPP_INSTANCE_ID يُحملان من .env (سطر 25-26)
+WHATSAPP_API_URL = 'https://api.ultramsg.com/{instance_id}/messages/chat'
+
+# ==================== Notification Settings ====================
+# تفعيل/تعطيل الإشعارات (سيتم التحكم فيها من قاعدة البيانات)
+ENABLE_EMAIL_NOTIFICATIONS = True
+ENABLE_WHATSAPP_NOTIFICATIONS = True
+ENABLE_DAILY_REPORTS = True
+
+# توقيت إرسال التقرير اليومي (ساعة:دقيقة)
+DAILY_REPORT_TIME = '20:00'  # الساعة 8 مساءً

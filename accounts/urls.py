@@ -15,4 +15,10 @@ urlpatterns = [
     path('export/users/excel/', views.export_users_excel, name='export_users_excel'),
     path('export/users/pdf/', views.export_users_pdf, name='export_users_pdf'),
     path('import/users/excel/', views.import_users_excel, name='import_users_excel'),
+    
+    # إشعارات النظام
+    path('notifications/', views.notifications_list, name='notifications_list'),
+    path('notifications/api/get/', views.get_notifications, name='get_notifications'),
+    path('notifications/<int:pk>/mark-read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all-read/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
 ]

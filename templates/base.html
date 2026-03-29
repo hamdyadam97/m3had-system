@@ -82,6 +82,107 @@
     .stat-card.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important; }
     .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
     .stat-card.info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
+    
+    /* تنسيقات الإشعارات */
+    .notifications-dropdown .notification-item {
+        transition: background-color 0.2s;
+    }
+    .notifications-dropdown .notification-item:hover {
+        background-color: #f8f9fa;
+    }
+    .notifications-dropdown .notification-item.unread {
+        background-color: #e3f2fd;
+        border-right: 3px solid #2196f3;
+    }
+    .icon-circle {
+        height: 2.5rem;
+        width: 2.5rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .bg-income { background-color: #28a745 !important; }
+    .bg-expense { background-color: #dc3545 !important; }
+    .bg-installment { background-color: #17a2b8 !important; }
+    .bg-registration { background-color: #007bff !important; }
+    .bg-system { background-color: #ffc107 !important; }
+    
+    #notification-badge {
+        font-size: 0.65rem;
+        padding: 0.25em 0.5em;
+    }
+    
+    /* Toast Notifications */
+    .toast-container {
+        position: fixed;
+        top: 80px;
+        left: 20px;
+        z-index: 9999;
+    }
+    
+    .toast-custom {
+        min-width: 300px;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        animation: slideInLeft 0.3s ease;
+    }
+    
+    @keyframes slideInLeft {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    .toast-custom.success {
+        background: linear-gradient(135deg, #11998e, #38ef7d);
+        color: white;
+    }
+    
+    .toast-custom.error {
+        background: linear-gradient(135deg, #eb3349, #f45c43);
+        color: white;
+    }
+    
+    .toast-custom.warning {
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        color: white;
+    }
+    
+    .toast-custom.info {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        color: white;
+    }
+    
+    /* Form Validation Styles */
+    .form-group.error input,
+    .form-group.error select,
+    .form-group.error textarea {
+        border-color: #e74c3c !important;
+        background-color: #fdf2f2 !important;
+    }
+    
+    .form-group.error .invalid-feedback {
+        display: block;
+        color: #e74c3c;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+    
+    .is-invalid {
+        border-color: #e74c3c !important;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: left calc(0.375em + 0.1875rem) center !important;
+        background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem) !important;
+        padding-left: calc(1.5em + 0.75rem) !important;
+    }
 </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -132,7 +233,60 @@
                     {% endif %}
                 </ul>
 
-                <ul class="navbar-nav">
+                <ul class="navbar-nav align-items-center">
+                    <!-- زر الإشعارات -->
+                    <li class="nav-item dropdown me-3">
+                        <a class="nav-link position-relative" href="#" id="notificationsDropdown" data-bs-toggle="dropdown">
+                            <i class="fas fa-bell fa-lg"></i>
+                            <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_notifications_count == 0 %}d-none{% endif %}">
+                                {{ unread_notifications_count }}
+                            </span>
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end shadow notifications-dropdown" style="width: 350px; max-height: 400px; overflow-y: auto;">
+                            <div class="dropdown-header d-flex justify-content-between align-items-center p-3 border-bottom">
+                                <h6 class="mb-0">الإشعارات</h6>
+                                {% if unread_notifications_count > 0 %}
+                                <button class="btn btn-sm btn-link text-decoration-none" onclick="markAllNotificationsRead()">
+                                    تحديد الكل كمقروء
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div id="notifications-list">
+                                {% if unread_notifications %}
+                                    {% for notif in unread_notifications %}
+                                    <a href="{% if notif.related_income %}{% url 'transactions:income_detail' notif.related_income.id %}{% else %}#{% endif %}" 
+                                       class="dropdown-item notification-item p-3 border-bottom" 
+                                       data-notification-id="{{ notif.id }}">
+                                        <div class="d-flex align-items-start">
+                                            <div class="flex-shrink-0">
+                                                <div class="icon-circle bg-{{ notif.notification_type|default:'primary' }}">
+                                                    <i class="fas {{ notif.get_notification_icon|default:'fa-bell' }} text-white"></i>
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1 ms-3">
+                                                <div class="small text-gray-500">{{ notif.created_at|timesince }}</div>
+                                                <span class="font-weight-bold">{{ notif.title }}</span>
+                                                <p class="mb-0 small text-muted">{{ notif.message|truncatechars:50 }}</p>
+                                            </div>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="dropdown-item text-center py-4 text-muted">
+                                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                                        <p class="mb-0">لا توجد إشعارات جديدة</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="dropdown-footer text-center p-2 border-top">
+                                <a href="{% url 'accounts:notifications_list' %}" class="text-decoration-none small">
+                                    عرض كل الإشعارات
+                                </a>
+                            </div>
+                        </div>
+                    </li>
+                    
+                    <!-- قائمة المستخدم -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle fa-lg me-1"></i> {{ user.get_full_name|default:user.username }}
@@ -217,7 +371,405 @@
         {% block auth_content %}{% endblock %}
     {% endif %}
 
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Toast Notification System -->
+    <script>
+        /**
+         * نظام الإشعارات المنبثقة (Toast Notifications)
+         */
+        const ToastSystem = {
+            container: document.getElementById('toastContainer'),
+            
+            show: function(message, type = 'info', duration = 5000) {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-custom ${type} align-items-center border-0 mb-2`;
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'assertive');
+                toast.setAttribute('aria-atomic', 'true');
+                
+                const icons = {
+                    success: 'fa-check-circle',
+                    error: 'fa-exclamation-circle',
+                    warning: 'fa-exclamation-triangle',
+                    info: 'fa-info-circle'
+                };
+                
+                toast.innerHTML = `
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            <i class="fas ${icons[type]} me-2"></i>
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                `;
+                
+                this.container.appendChild(toast);
+                
+                const bsToast = new bootstrap.Toast(toast, {
+                    delay: duration,
+                    autohide: true
+                });
+                
+                bsToast.show();
+                
+                toast.addEventListener('hidden.bs.toast', () => {
+                    toast.remove();
+                });
+            },
+            
+            success: function(message, duration) {
+                this.show(message, 'success', duration);
+            },
+            
+            error: function(message, duration) {
+                this.show(message, 'error', duration);
+            },
+            
+            warning: function(message, duration) {
+                this.show(message, 'warning', duration);
+            },
+            
+            info: function(message, duration) {
+                this.show(message, 'info', duration);
+            }
+        };
+        
+        /**
+         * نظام التحقق من صحة النماذج
+         */
+        const FormValidator = {
+            // أنماط التحقق
+            patterns: {
+                email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                phone: /^01[0-2,5]{1}[0-9]{8}$/,
+                phoneLandline: /^02\d{8,9}$/,
+                nationalId: /^\d{14}$/,
+                username: /^[a-zA-Z0-9_]+$/,
+                numeric: /^\d+$/,
+                decimal: /^\d+(\.\d{1,2})?$/
+            },
+            
+            // رسائل الخطأ
+            messages: {
+                required: 'هذا الحقل مطلوب',
+                email: 'البريد الإلكتروني غير صالح',
+                phone: 'رقم الهاتف غير صالح (يجب أن يبدأ بـ 01 ويكون 11 رقم)',
+                minLength: (min) => `يجب أن يكون ${min} أحرف على الأقل`,
+                maxLength: (max) => `يجب أن يكون ${max} حرف كحد أقصى`,
+                minValue: (min) => `القيمة يجب أن تكون ${min} أو أكبر`,
+                maxValue: (max) => `القيمة يجب أن تكون ${max} أو أقل`,
+                match: 'القيمتان غير متطابقتين',
+                pattern: 'القيمة غير صالحة'
+            },
+            
+            // التحقق من حقل
+            validateField: function(field) {
+                const value = field.value.trim();
+                const validations = field.dataset.validate;
+                
+                if (!validations) return { valid: true };
+                
+                const rules = validations.split('|');
+                
+                for (let rule of rules) {
+                    const [ruleName, ruleValue] = rule.split(':');
+                    
+                    // التحقق من الحقل المطلوب
+                    if (ruleName === 'required' && !value) {
+                        return { valid: false, message: this.messages.required };
+                    }
+                    
+                    // إذا كان الحقل فارغاً وليس مطلوباً
+                    if (!value && ruleName !== 'required') continue;
+                    
+                    // التحقق من الطول الأدنى
+                    if (ruleName === 'min' && value.length < parseInt(ruleValue)) {
+                        return { valid: false, message: this.messages.minLength(ruleValue) };
+                    }
+                    
+                    // التحقق من الطول الأقصى
+                    if (ruleName === 'max' && value.length > parseInt(ruleValue)) {
+                        return { valid: false, message: this.messages.maxLength(ruleValue) };
+                    }
+                    
+                    // التحقق من القيمة الأدنى
+                    if (ruleName === 'minValue' && parseFloat(value) < parseFloat(ruleValue)) {
+                        return { valid: false, message: this.messages.minValue(ruleValue) };
+                    }
+                    
+                    // التحقق من القيمة الأقصى
+                    if (ruleName === 'maxValue' && parseFloat(value) > parseFloat(ruleValue)) {
+                        return { valid: false, message: this.messages.maxValue(ruleValue) };
+                    }
+                    
+                    // التحقق من النمط
+                    if (ruleName === 'email' && !this.patterns.email.test(value)) {
+                        return { valid: false, message: this.messages.email };
+                    }
+                    
+                    if (ruleName === 'phone' && !this.patterns.phone.test(value)) {
+                        return { valid: false, message: this.messages.phone };
+                    }
+                    
+                    if (ruleName === 'nationalId' && !this.patterns.nationalId.test(value)) {
+                        return { valid: false, message: 'الرقم القومي يجب أن يكون 14 رقم' };
+                    }
+                }
+                
+                return { valid: true };
+            },
+            
+            // عرض خطأ على حقل
+            showFieldError: function(field, message) {
+                field.classList.add('is-invalid');
+                
+                let errorDiv = field.parentElement.querySelector('.invalid-feedback');
+                if (!errorDiv) {
+                    errorDiv = document.createElement('div');
+                    errorDiv.className = 'invalid-feedback';
+                    field.parentElement.appendChild(errorDiv);
+                }
+                errorDiv.textContent = message;
+                
+                // إضافة animation
+                field.parentElement.classList.add('animate__animated', 'animate__shakeX');
+                setTimeout(() => {
+                    field.parentElement.classList.remove('animate__animated', 'animate__shakeX');
+                }, 500);
+            },
+            
+            // إزالة خطأ من حقل
+            clearFieldError: function(field) {
+                field.classList.remove('is-invalid');
+                const errorDiv = field.parentElement.querySelector('.invalid-feedback');
+                if (errorDiv) {
+                    errorDiv.remove();
+                }
+            },
+            
+            // التحقق من النموذج كاملاً
+            validateForm: function(form) {
+                let isValid = true;
+                const fields = form.querySelectorAll('[data-validate]');
+                
+                fields.forEach(field => {
+                    const result = this.validateField(field);
+                    if (!result.valid) {
+                        this.showFieldError(field, result.message);
+                        isValid = false;
+                    } else {
+                        this.clearFieldError(field);
+                    }
+                });
+                
+                return isValid;
+            },
+            
+            // تهيئة النموذج
+            init: function(formSelector) {
+                const form = document.querySelector(formSelector);
+                if (!form) return;
+                
+                const fields = form.querySelectorAll('[data-validate]');
+                
+                fields.forEach(field => {
+                    // التحقق عند مغادرة الحقل
+                    field.addEventListener('blur', () => {
+                        const result = this.validateField(field);
+                        if (!result.valid) {
+                            this.showFieldError(field, result.message);
+                        } else {
+                            this.clearFieldError(field);
+                        }
+                    });
+                    
+                    // إزالة الخطأ عند الكتابة
+                    field.addEventListener('input', () => {
+                        if (field.classList.contains('is-invalid')) {
+                            this.clearFieldError(field);
+                        }
+                    });
+                });
+                
+                // التحقق عند الإرسال
+                form.addEventListener('submit', (e) => {
+                    if (!this.validateForm(form)) {
+                        e.preventDefault();
+                        ToastSystem.error('يرجى تصحيح الأخطاء في النموذج قبل الإرسال');
+                    }
+                });
+            }
+        };
+        
+        // تعريف دوال مساعدة عالمية
+        window.showToast = function(message, type = 'info', duration = 5000) {
+            ToastSystem.show(message, type, duration);
+        };
+        
+        window.showSuccess = function(message, duration) {
+            ToastSystem.success(message, duration);
+        };
+        
+        window.showError = function(message, duration) {
+            ToastSystem.error(message, duration);
+        };
+        
+        window.showWarning = function(message, duration) {
+            ToastSystem.warning(message, duration);
+        };
+        
+        window.showInfo = function(message, duration) {
+            ToastSystem.info(message, duration);
+        };
+    </script>
+    
+    {% if user.is_authenticated %}
+    <!-- JavaScript للإشعارات -->
+    <script>
+        // تحديث الإشعارات كل 30 ثانية
+        const NOTIFICATION_UPDATE_INTERVAL = 30000;
+        
+        function updateNotifications() {
+            fetch('{% url "accounts:get_notifications" %}')
+                .then(response => response.json())
+                .then(data => {
+                    updateNotificationBadge(data.unread_count);
+                    updateNotificationsList(data.notifications);
+                })
+                .catch(error => console.error('Error fetching notifications:', error));
+        }
+        
+        function updateNotificationBadge(count) {
+            const badge = document.getElementById('notification-badge');
+            if (count > 0) {
+                badge.textContent = count > 99 ? '99+' : count;
+                badge.classList.remove('d-none');
+            } else {
+                badge.classList.add('d-none');
+            }
+        }
+        
+        function updateNotificationsList(notifications) {
+            const listContainer = document.getElementById('notifications-list');
+            
+            if (notifications.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="dropdown-item text-center py-4 text-muted">
+                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
+                        <p class="mb-0">لا توجد إشعارات جديدة</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            notifications.forEach(notif => {
+                html += `
+                    <a href="${notif.link}" 
+                       class="dropdown-item notification-item p-3 border-bottom unread" 
+                       data-notification-id="${notif.id}"
+                       onclick="markNotificationRead(${notif.id}, this)">
+                        <div class="d-flex align-items-start">
+                            <div class="flex-shrink-0">
+                                <div class="icon-circle bg-${notif.type}">
+                                    <i class="fas ${notif.icon} text-white"></i>
+                                </div>
+                            </div>
+                            <div class="flex-grow-1 ms-3">
+                                <div class="small text-gray-500">${notif.time_ago}</div>
+                                <span class="font-weight-bold">${notif.title}</span>
+                                <p class="mb-0 small text-muted">${notif.message.substring(0, 50)}...</p>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            });
+            
+            listContainer.innerHTML = html;
+        }
+        
+        function markNotificationRead(notificationId, element) {
+            event.preventDefault();
+            
+            fetch(`/accounts/notifications/${notificationId}/mark-read/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    element.classList.remove('unread');
+                    element.style.opacity = '0.7';
+                    
+                    // تحديث العدد
+                    const badge = document.getElementById('notification-badge');
+                    const currentCount = parseInt(badge.textContent) || 0;
+                    if (currentCount > 1) {
+                        badge.textContent = currentCount - 1;
+                    } else {
+                        badge.classList.add('d-none');
+                    }
+                    
+                    // الانتقال للرابط
+                    window.location.href = element.getAttribute('href');
+                }
+            });
+        }
+        
+        function markAllNotificationsRead() {
+            fetch('{% url "accounts:mark_all_notifications_read" %}', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken'),
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('notification-badge').classList.add('d-none');
+                    document.getElementById('notifications-list').innerHTML = `
+                        <div class="dropdown-item text-center py-4 text-muted">
+                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
+                            <p class="mb-0">تم تحديد كل الإشعارات كمقروءة</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        // دالة لجلب CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // بدء التحديث التلقائي
+        document.addEventListener('DOMContentLoaded', function() {
+            updateNotifications();
+            setInterval(updateNotifications, NOTIFICATION_UPDATE_INTERVAL);
+        });
+    </script>
+    {% endif %}
+    
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,0 +1,377 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}ملفي الشخصي - نظام إدارة المعاهد{% endblock %}
+
+{% block extra_css %}
+<style>
+    .profile-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 40px 30px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    }
+    .profile-avatar {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        border: 5px solid rgba(255,255,255,0.3);
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        color: #667eea;
+        margin-left: 25px;
+    }
+    .stat-card {
+        border: none;
+        border-radius: 15px;
+        padding: 25px;
+        transition: transform 0.3s, box-shadow 0.3s;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    }
+    .stat-card.primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+    .stat-card.success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; }
+    .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+    .stat-card.info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+    .stat-card.dark { background: linear-gradient(135deg, #232526 0%, #414345 100%); color: white; }
+    .stat-card.purple { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); color: white; }
+    
+    .stat-icon {
+        font-size: 40px;
+        opacity: 0.8;
+        margin-bottom: 15px;
+    }
+    .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .stat-label {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
+    }
+    .chart-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f2ff;
+    }
+    
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.2);
+        padding: 10px 20px;
+        border-radius: 50px;
+        font-size: 14px;
+    }
+    
+    .transaction-item {
+        padding: 15px;
+        border-bottom: 1px solid #f0f2ff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.3s;
+    }
+    .transaction-item:hover {
+        background: #f8f9ff;
+    }
+    .transaction-info h6 {
+        margin: 0;
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    .transaction-info small {
+        color: #7f8c8d;
+    }
+    .transaction-amount {
+        font-size: 18px;
+        font-weight: bold;
+        color: #27ae60;
+    }
+    .transaction-amount.installment {
+        color: #3498db;
+    }
+    
+    .user-type-badge {
+        display: inline-block;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-top: 10px;
+    }
+    .user-type-badge.admin { background: #e74c3c; color: white; }
+    .user-type-badge.branch_manager { background: #f39c12; color: white; }
+    .user-type-badge.employee { background: #3498db; color: white; }
+    .user-type-badge.regional_manager { background: #9b59b6; color: white; }
+    .user-type-badge.accountant { background: #1abc9c; color: white; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- رأس الصفحة -->
+    <div class="profile-header">
+        <div class="d-flex align-items-center">
+            <div class="profile-avatar">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <h2 class="mb-2">{{ user.get_full_name|default:user.username }}</h2>
+                <p class="mb-2 opacity-75"><i class="fas fa-envelope me-2"></i>{{ user.email|default:"لا يوجد إيميل" }}</p>
+                <p class="mb-2 opacity-75"><i class="fas fa-phone me-2"></i>{{ user.phone|default:"لا يوجد هاتف" }}</p>
+                {% if user.branch %}
+                <p class="mb-2 opacity-75"><i class="fas fa-building me-2"></i>{{ user.branch.name }}</p>
+                {% endif %}
+                <span class="user-type-badge {{ user.user_type }}">
+                    {{ user.get_user_type_display }}
+                </span>
+                
+                {% if user_rank != '-' %}
+                <div class="rank-badge mt-3">
+                    <i class="fas fa-trophy"></i>
+                    <span>ترتيبك بين زملائك: #{{ user_rank }} من {{ branch_employees_count }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- الإحصائيات السريعة -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stat-card primary">
+                <div class="stat-icon"><i class="fas fa-wallet"></i></div>
+                <div class="stat-value">{{ total_collected|floatformat:0 }}</div>
+                <div class="stat-label">إجمالي التحصيل (ر.س)</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card success">
+                <div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div>
+                <div class="stat-value">{{ registered_students }}</div>
+                <div class="stat-label">طلاب مسجلين</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card warning">
+                <div class="stat-icon"><i class="fas fa-exchange-alt"></i></div>
+                <div class="stat-value">{{ total_transactions }}</div>
+                <div class="stat-label">عدد العمليات</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stat-card info">
+                <div class="stat-icon"><i class="fas fa-credit-card"></i></div>
+                <div class="stat-value">{{ installment_count }}</div>
+                <div class="stat-label">أقساط محصلة</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- إحصائيات اليوم والشهر -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="stat-card dark">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-icon mb-0"><i class="fas fa-calendar-day"></i></div>
+                        <div class="stat-value">{{ today_amount|floatformat:0 }}</div>
+                        <div class="stat-label">تحصيل اليوم ({{ today_count }} عملية)</div>
+                    </div>
+                    <div class="text-end">
+                        <div style="font-size: 48px; opacity: 0.3;"><i class="fas fa-sun"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="stat-card purple">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="stat-icon mb-0"><i class="fas fa-calendar-alt"></i></div>
+                        <div class="stat-value">{{ month_amount|floatformat:0 }}</div>
+                        <div class="stat-label">تحصيل الشهر ({{ month_count }} عملية)</div>
+                    </div>
+                    <div class="text-end">
+                        <div style="font-size: 48px; opacity: 0.3;"><i class="fas fa-moon"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="chart-container">
+                <div class="chart-title">
+                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                    أداؤك خلال آخر 30 يوم
+                </div>
+                <canvas id="dailyChart" height="100"></canvas>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="chart-container">
+                <div class="chart-title">
+                    <i class="fas fa-chart-pie me-2 text-success"></i>
+                    التحصيل حسب طريقة الدفع
+                </div>
+                <canvas id="paymentMethodChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- آخر التحصيلات -->
+    <div class="chart-container">
+        <div class="chart-title">
+            <i class="fas fa-list me-2 text-warning"></i>
+            آخر التحصيلات
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>التاريخ</th>
+                        <th>الطالب</th>
+                        <th>الدورة</th>
+                        <th>النوع</th>
+                        <th>الفرع</th>
+                        <th>المبلغ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in recent_transactions %}
+                    <tr>
+                        <td>{{ transaction.date|date:"Y-m-d" }}</td>
+                        <td>{{ transaction.student.full_name }}</td>
+                        <td>{{ transaction.course.name }}</td>
+                        <td>
+                            {% if transaction.income_type == 'registration' %}
+                            <span class="badge bg-success">تسجيل جديد</span>
+                            {% else %}
+                            <span class="badge bg-info">تحصيل قسط</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ transaction.branch.name }}</td>
+                        <td class="fw-bold text-success">{{ transaction.amount|floatformat:2 }} ر.س</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>لا توجد تحصيلات حتى الآن</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // رسم بياني خطي - أداء 30 يوم
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+    new Chart(dailyCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_labels|safe }},
+            datasets: [{
+                label: 'المبلغ المحصل',
+                data: {{ daily_data|safe }},
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#667eea',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value.toLocaleString() + ' ر.س';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // رسم بياني دائري - طرق الدفع
+    const paymentCtx = document.getElementById('paymentMethodChart').getContext('2d');
+    new Chart(paymentCtx, {
+        type: 'doughnut',
+        data: {
+            labels: {{ payment_labels|safe }},
+            datasets: [{
+                data: {{ payment_data|safe }},
+                backgroundColor: {{ payment_colors|safe }},
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
