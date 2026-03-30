@@ -171,16 +171,11 @@ def send_whatsapp_message(phone, message):
         logger.error("Missing UltraMsg token or instance_id")
         return False
 
-    # ✅ الطريقة الصحيحة: التوكن في Body فقط (ليس في URL)
+    # ✅ نفس طريقة الكود التجريبي بالضبط
     url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
 
-    # ✅ جميع البيانات في body كـ form-encoded (مثل الكود التجريبي)
-    payload = {
-        'token': token,  # في body
-        'to': clean_phone,  # في body
-        'body': message,  # في body
-        'priority': '10'  # أولوية عالية
-    }
+    # ✅ بناء payload كـ string (ليس dict) - نفس الطريقة التجريبية
+    payload_str = f"token={token}&to={clean_phone}&body={message}&priority=10"
 
     headers = {
         'Content-Type': 'application/x-www-form-urlencoded'
@@ -189,13 +184,13 @@ def send_whatsapp_message(phone, message):
     try:
         response = requests.post(
             url,
-            data=payload,  # ✅ form-encoded تلقائياً
+            data=payload_str,  # ✅ string وليس dict
             headers=headers,
             timeout=15
         )
 
         print(f"DEBUG URL: {url}")
-        print(f"DEBUG Payload: {payload}")
+        print(f"DEBUG Payload: {payload_str}")
         print(f"DEBUG Status: {response.status_code}")
         print(f"DEBUG Response: {response.text}")
 
@@ -212,7 +207,6 @@ def send_whatsapp_message(phone, message):
     except Exception as e:
         logger.error(f"❌ WhatsApp Exception: {str(e)}")
         return False
-
 
 # --- دوال الإشعارات التخصصية (إيصالات، تذكيرات) ---
 def send_payment_receipt_to_student(student, income, payment_data):
