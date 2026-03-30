@@ -793,9 +793,16 @@ def notify_on_payment(income):
         'notes': income.notes if hasattr(income, 'notes') and income.notes else '',
     }
 
-    # إرسال للطالب
+    # إرسال للطالب (بشكل غير متزامن باستخدام Celery لو متاح)
     if student.email:
-        send_payment_receipt_to_student(student, income, payment_data)
+        # استخدام Celery للإرسال غير المتزامن لو متاح
+        try:
+            from students.tasks import send_payment_receipt_task
+            send_payment_receipt_task.delay(student.id, income.id, payment_data)
+        except Exception:
+            # لو Celery مش شغال، ابعت مباشرة
+            send_payment_receipt_to_student(student, income, payment_data)
+    
     if student.phone:
         send_whatsapp_payment_notification(student.phone, income, student, branch, collected_by, 'student')
 

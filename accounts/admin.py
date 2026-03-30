@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.db.models import Q
-from .models import User
+from .models import User, Notification
 
 
 @admin.register(User)
@@ -101,3 +101,48 @@ class CustomUserAdmin(UserAdmin):
     @admin.action(description='إلغاء صلاحية موظف (staff)')
     def remove_staff(self, request, queryset):
         queryset.update(is_staff=False)
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    """إدارة الإشعارات الداخلية"""
+    
+    list_display = [
+        'title', 'recipient', 'notification_type', 
+        'is_read', 'created_at', 'read_at'
+    ]
+    list_filter = [
+        'notification_type', 'is_read', 'created_at'
+    ]
+    search_fields = [
+        'title', 'message', 'recipient__username', 
+        'recipient__first_name', 'recipient__last_name'
+    ]
+    list_editable = ['is_read']
+    readonly_fields = ['created_at', 'read_at']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('معلومات أساسية', {
+            'fields': ('recipient', 'notification_type', 'title', 'message')
+        }),
+        ('الروابط المرتبطة', {
+            'fields': ('related_income', 'related_expense', 'related_student'),
+            'classes': ('collapse',)
+        }),
+        ('حالة الإشعار', {
+            'fields': ('is_read', 'read_at', 'created_at')
+        }),
+    )
+    
+    actions = ['mark_as_read', 'mark_as_unread']
+    
+    @admin.action(description='تحديد كمقروء')
+    def mark_as_read(self, request, queryset):
+        from django.utils import timezone
+        queryset.update(is_read=True, read_at=timezone.now())
+    
+    @admin.action(description='تحديد كغير مقروء')
+    def mark_as_unread(self, request, queryset):
+        queryset.update(is_read=False, read_at=None)

@@ -6,3 +6,9 @@ tzdata==2025.3
 python-dateutil==2.9.0
 requests==2.32.3
 python-dotenv==1.2.2
+
+# Celery & Redis
+celery==5.4.0
+redis==5.0.8
+django-celery-beat==2.7.0
+django-celery-results==2.5.1

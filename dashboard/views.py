@@ -8,8 +8,9 @@ from django.contrib.auth.models import Group
 from branches.models import Branch
 from transactions.models import Income, Expense
 from students.models import Student
+from students.notification_models import NotificationLog
 from courses.models import Course
-from accounts.models import User
+from accounts.models import User, Notification
 
 
 @login_required
@@ -157,6 +158,21 @@ def dashboard(request):
     
     # ترتيب النشاطات حسب الوقت
     context['recent_activities'] = sorted(recent_activities, key=lambda x: x['time'], reverse=True)[:8]
+
+    # ====== الإشعارات ======
+    # 1. الإشعارات الداخلية للمستخدم (غير مقروءة)
+    unread_notifications = Notification.objects.filter(
+        recipient=user,
+        is_read=False
+    ).order_by('-created_at')[:5]
+    context['unread_notifications'] = unread_notifications
+    context['unread_notifications_count'] = unread_notifications.count()
+    
+    # 2. سجل الإشعارات المرسلة للطلاب (آخر 5)
+    recent_notification_logs = NotificationLog.objects.select_related(
+        'student', 'installment'
+    ).order_by('-created_at')[:5]
+    context['recent_notification_logs'] = recent_notification_logs
 
     return render(request, 'dashboard/dashboard.html', context)
 

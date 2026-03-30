@@ -22,23 +22,22 @@ load_dotenv(BASE_DIR / '.env')
 # بيانات الاعتماد من .env (للمفاتيح الحساسة) - الأولوية للـ .env
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL =  os.environ.get('DEFAULT_FROM_EMAIL', '')  # Your verified sender email
 WHATSAPP_API_TOKEN = os.environ.get('WHATSAPP_API_TOKEN', '')
 WHATSAPP_INSTANCE_ID = os.environ.get('WHATSAPP_INSTANCE_ID', '')
+CALLMEBOT_API_KEY = os.environ.get('CALLMEBOT_API_KEY', '')
 
-print(EMAIL_HOST_USER,'EMAIL_HOST_USER')
-print(EMAIL_HOST_PASSWORD,'EMAIL_HOST_PASSWORD')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-wx=a)shl!j@w^y)*=5a#$r0dvvy_yde27#i1r^#%#=%ew_ry47'
+SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['m3had-system.cloud', 'www.m3had-system.cloud', '89.116.228.76', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
+
 
 # Application definition
 
@@ -49,6 +48,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    
+    # Third party apps
+    'django_celery_beat',
+    'django_celery_results',
+    
     # Local apps
     'accounts',
     'branches',
@@ -67,7 +71,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-
 ]
 
 ROOT_URLCONF = 'institute_management.urls'
@@ -79,18 +82,14 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'branches.context_processors.branch_context',
-                'accounts.context_processors.notifications_context',
             ],
         },
     },
 ]
-
-# Custom User Model
-AUTH_USER_MODEL = 'accounts.User'
 
 WSGI_APPLICATION = 'institute_management.wsgi.application'
 
@@ -141,24 +140,25 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',
-]
-# 2. هذا هو المجلد الذي سيتم إنشاؤه في السيرفر لتجميع كل الملفات فيه (المكان المفقود)
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [BASE_DIR / 'static']
+
 # Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Login settings
+# Default primary key field type
+# https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Custom user model
+AUTH_USER_MODEL = 'accounts.User'
+
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
-# Default primary key field type
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ==================== Logging Settings ====================
+# Logging configuration
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -174,7 +174,7 @@ LOGGING = {
         },
     },
     'loggers': {
-        'accounts.notifications': {
+        'django': {
             'handlers': ['file', 'console'],
             'level': 'INFO',
             'propagate': True,
@@ -189,7 +189,7 @@ EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 # EMAIL_HOST_USER و EMAIL_HOST_PASSWORD يُحملان من .env (سطر 23-24)
-DEFAULT_FROM_EMAIL = DEFAULT_FROM_EMAIL or ''  # Your verified sender email
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or ''  # Your verified sender email
 
 # ==================== WhatsApp Settings ====================
 WHATSAPP_PROVIDER = 'ultramsg'
@@ -204,3 +204,23 @@ ENABLE_DAILY_REPORTS = True
 
 # توقيت إرسال التقرير اليومي (ساعة:دقيقة)
 DAILY_REPORT_TIME = '20:00'  # الساعة 8 مساءً
+
+# ==================== Celery Configuration ====================
+# Redis as broker and backend
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+
+# Celery settings
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLE_UTC = True
+
+# Celery Beat settings (for periodic tasks)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Optional: Celery task settings
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
