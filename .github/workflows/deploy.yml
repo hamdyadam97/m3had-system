@@ -36,6 +36,10 @@ jobs:
                     # الضربة القاضية: ضبط الصلاحيات للملف ليعمل اللوجن
                     sudo chown www-data:www-data /var/www/m3had-system/db.sqlite3
                     sudo chmod 664 /var/www/m3had-system/db.sqlite3
-        
+                    
+                    
                     # إعادة التشغيل الإجبارية للـ Gunicorn ليرى البيانات الجديدة
                     sudo systemctl restart gunicorn
+            
+                    # إعادة تشغيل الـ Celery لضمان تنفيذ المهام بالكود الجديد
+                    sudo systemctl restart celery
