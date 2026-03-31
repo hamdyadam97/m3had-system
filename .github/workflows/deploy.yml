@@ -29,6 +29,7 @@ jobs:
         
                     source venv/bin/activate
                     pip install -r requirements.txt
+                    python manage.py migrate --noinput
         
                     # تحديث الملفات الثابتة
                     python manage.py collectstatic --noinput
