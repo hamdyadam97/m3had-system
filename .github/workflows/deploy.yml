@@ -24,7 +24,6 @@ jobs:
                     git reset --hard origin/main
         
                     # التأكد من وجود ملف القاعدة في المكان الصحيح (الذي أظهره الـ shell)
-                    # إذا كان الملف في مجلد فرعي، سنقوم بنسخه للمكان المطلوب:
                     # cp path/to/your/repo/db.sqlite3 /var/www/m3had-system/db.sqlite3
         
                     source venv/bin/activate
