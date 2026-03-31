@@ -1,83 +1,158 @@
 {% extends 'base.html' %}
 
-{% block title %}تقرير الدورات - نظام إدارة المعاهد{% endblock %}
+{% block title %}تقارير الدورات{% endblock %}
 
 {% block content %}
-
-<ul class="nav nav-pills nav-fill mb-4 p-1 bg-light rounded shadow-sm">
-    <li class="nav-item">
-        <a class="nav-link {% if 'daily' in request.path %}active{% endif %}" href="{% url 'reports:daily_report' %}"><i class="fas fa-calendar-day"></i> اليومي</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if 'monthly' in request.path %}active{% endif %}" href="{% url 'reports:monthly_report' %}"><i class="fas fa-calendar-alt"></i> الشهري</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if 'courses' in request.path %}active{% endif %}" href="{% url 'reports:courses_report' %}"><i class="fas fa-graduation-cap"></i> الدورات</a>
-    </li>
-    <li class="nav-item">
-        <a class="nav-link {% if 'employees' in request.path %}active{% endif %}" href="{% url 'reports:employees_report' %}"><i class="fas fa-users"></i> الموظفين</a>
-    </li>
-</ul>
-<div class="card border-0 shadow-sm mb-4">
-    <div class="card-body d-flex justify-content-between align-items-center flex-wrap">
-        <h4 class="mb-0 text-primary fw-bold"><i class="fas fa-book"></i> تقرير الدورات</h4>
-
-        <form method="get" class="d-flex align-items-center gap-2">
-            <input type="date" name="date" class="form-control form-control-sm" value="{{ date|date:'Y-m-d' }}">
-            <button type="submit" class="btn btn-primary btn-sm">عرض</button>
-
-            <div class="btn-group shadow-sm ms-2">
-                <a href="?export=excel&date={{ date|date:'Y-m-d' }}" class="btn btn-outline-success btn-sm">Excel</a>
-                <a href="?export=pdf&date={{ date|date:'Y-m-d' }}" class="btn btn-outline-danger btn-sm">PDF</a>
-            </div>
-        </form>
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">
+            <i class="fas fa-book text-primary me-2"></i>
+            تقارير الدورات
+        </h2>
+        <a href="{% url 'reports:diplomas_report' %}" class="btn btn-outline-success">
+            <i class="fas fa-graduation-cap me-1"></i>
+            تقارير الدبلومات
+        </a>
     </div>
-</div>
 
-<div class="card">
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>الدورة/الدبلومة</th>
-                        <th>النوع</th>
-                        <th>السعر</th>
-                        <th>التسجيلات اليومية</th>
-                        <th>الإيراد اليومي</th>
-                        <th>الإيراد الشهري</th>
-                        <th>إجمالي التسجيلات</th>
-                        <th>إجمالي الإيرادات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for data in courses_data %}
-                    <tr>
-                        <td>{{ forloop.counter }}</td>
-                        <td>{{ data.course.name }}</td>
-                        <td>
-                            <span class="badge {% if data.course.course_type == 'diploma' %}bg-primary{% else %}bg-info{% endif %}">
-                                {{ data.course.get_course_type_display }}
-                            </span>
-                        </td>
-                        <td>{{ data.course.price|floatformat:2 }}</td>
-                        <td>{{ data.daily_registrations }}</td>
-                        <td class="text-success">{{ data.daily_income|floatformat:2 }}</td>
-                        <td class="text-primary">{{ data.monthly_income|floatformat:2 }}</td>
-                        <td>{{ data.total_registrations }}</td>
-                        <td class="fw-bold text-success">{{ data.total_income|floatformat:2 }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="9" class="text-center py-4">
-                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-                            <p>لا توجد بيانات</p>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- Filters -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="fas fa-filter me-2"></i>
+                فلترة التقرير
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">من تاريخ</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ start_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">إلى تاريخ</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ end_date|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">المعهد</label>
+                    <select name="branch" class="form-select">
+                        <option value="">جميع المعاهد</option>
+                        {% for b in branches %}
+                        <option value="{{ b.id }}" {% if selected_branch.id == b.id %}selected{% endif %}>
+                            {{ b.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-1"></i>
+                        عرض التقرير
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Report Period Info -->
+    <div class="alert alert-info mb-4">
+        <i class="fas fa-info-circle me-2"></i>
+        الفترة: <strong>{{ start_date|date:"Y-m-d" }}</strong> إلى <strong>{{ end_date|date:"Y-m-d" }}</strong>
+        {% if selected_branch %}
+        | المعهد: <strong>{{ selected_branch.name }}</strong>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <!-- أكثر الدورات تسجيلًا -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        أكثر الدورات تسجيلًا (الطلاب)
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>الدورة</th>
+                                    <th class="text-center">عدد الطلاب</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in courses_by_students %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ course.name }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success fs-6">{{ course.students_count|default:0 }}</span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">
+                                        لا توجد بيانات
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أكثر الدورات دخلًا -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-money-bill-wave me-2"></i>
+                        أكثر الدورات دخلًا
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>الدورة</th>
+                                    <th class="text-center">الإيرادات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for course in courses_by_income %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ course.name }}</td>
+                                    <td class="text-center">
+                                        <span class="badge bg-primary fs-6">
+                                            {% if course.total_income %}
+                                                {{ course.total_income|floatformat:0 }} ر.س
+                                            {% else %}
+                                                0 ر.س
+                                            {% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center py-4 text-muted">
+                                        لا توجد بيانات
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -1,19 +1,40 @@
+"""
+تقارير متقدمة للنظام
+===================
+1. تقارير المعاهد (Branches)
+2. تقارير الموظفين (Employees)
+3. تقارير الدورات (Courses)
+4. تقارير الدبلومات (Diplomas)
+5. تقارير الفترات الزمنية (Time Analysis)
+6. التقارير القديمة (Daily, Monthly, etc.)
+"""
+
 from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required, permission_required
-from django.db.models import Sum, Count, Q
-from datetime import date, timedelta, datetime
-from transactions.models import Income, Expense
-from students.models import Student
-from courses.models import Course
-from branches.models import Branch, BranchTarget
-from django.contrib.auth import get_user_model
-import pandas as pd
+from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
+from django.db.models import Count, Sum, Avg, F, Q, ExpressionWrapper, DecimalField, Func
+from django.db.models.functions import TruncMonth, TruncDate, ExtractHour
+from django.utils import timezone
 from django.http import HttpResponse
 from django.template.loader import render_to_string
-from weasyprint import HTML
+from datetime import datetime, timedelta, date
+from decimal import Decimal
+import pandas as pd
 
-User = get_user_model()
+try:
+    from weasyprint import HTML
+except ImportError:
+    HTML = None
 
+from branches.models import Branch, BranchTarget
+from courses.models import Course
+from students.models import Student
+from transactions.models import Income, Expense
+from accounts.models import User
+
+
+# =============================================================================
+# Helpers & Mixins
+# =============================================================================
 
 def get_visible_branches(user):
     """دالة مساعدة لتحديد نطاق رؤية المستخدم"""
@@ -24,6 +45,52 @@ def get_visible_branches(user):
     else:
         return Branch.objects.filter(id=user.branch_id) if user.branch else Branch.objects.none()
 
+
+def get_date_range(request):
+    """استخراج نطاق التاريخ من الطلب"""
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    if start_date:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    else:
+        start_date = date.today().replace(day=1)  # بداية الشهر الحالي
+    
+    if end_date:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    else:
+        end_date = date.today()
+    
+    return start_date, end_date
+
+
+def get_branch_filter(request):
+    """استخراج فلتر الفرع من الطلب"""
+    branch_id = request.GET.get('branch')
+    if branch_id:
+        return Branch.objects.filter(id=branch_id).first()
+    return None
+
+
+def get_employee_filter(request):
+    """استخراج فلتر الموظف من الطلب"""
+    employee_id = request.GET.get('employee')
+    if employee_id:
+        return User.objects.filter(id=employee_id).first()
+    return None
+
+
+def get_course_filter(request):
+    """استخراج فلتر الكورس من الطلب"""
+    course_id = request.GET.get('course')
+    if course_id:
+        return Course.objects.filter(id=course_id).first()
+    return None
+
+
+# =============================================================================
+# القديمة - Basic Reports
+# =============================================================================
 
 @login_required
 @permission_required('transactions.view_reports', raise_exception=True)
@@ -39,7 +106,7 @@ def daily_report(request):
     date_str = request.GET.get('date')
     selected_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else today
 
-    # تحديد الفروع المتاحة (بناءً على دالة get_visible_branches السابقة)
+    # تحديد الفروع المتاحة
     visible_branches = get_visible_branches(request.user)
     branch_id = request.GET.get('branch')
 
@@ -49,8 +116,7 @@ def daily_report(request):
         active_branches = visible_branches
 
     # جلب البيانات
-    incomes = Income.objects.filter(branch__in=active_branches, date=selected_date).select_related('student', 'course',
-                                                                                                   'collected_by')
+    incomes = Income.objects.filter(branch__in=active_branches, date=selected_date).select_related('student', 'course', 'collected_by')
     expenses = Expense.objects.filter(branch__in=active_branches, date=selected_date).select_related('created_by')
 
     # --- منطق التصدير ---
@@ -79,35 +145,32 @@ def daily_report(request):
         }
         return export_to_excel(expenses, "daily_expenses", columns)
 
-    # 3. تصدير إيرادات PDF
+    # 3. تصدير PDF
+    if export_type == 'income_pdf' and HTML:
+        total_sum = incomes.aggregate(Sum('amount'))['amount__sum'] or 0
+        context = {
+            'data': incomes,
+            'title': 'تقرير الإيرادات اليومي',
+            'date': selected_date,
+            'type': 'income',
+            'total_sum': total_sum,
+            'user': request.user
+        }
+        return export_to_pdf(request, context, 'reports/pdf_template.html', "incomes_report")
 
-        # 3. تصدير إيرادات PDF
-    if export_type == 'income_pdf':
-            total_sum = incomes.aggregate(Sum('amount'))['amount__sum'] or 0  # حساب الإجمالي هنا
-            context = {
-                'data': incomes,
-                'title': 'تقرير الإيرادات اليومي',
-                'date': selected_date,
-                'type': 'income',
-                'total_sum': total_sum,  # نبعته للملف
-                'user': request.user
-            }
-            return export_to_pdf(request, context, 'reports/pdf_template.html', "incomes_report")
+    if export_type == 'expense_pdf' and HTML:
+        total_sum = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
+        context = {
+            'data': expenses,
+            'title': 'تقرير المصروفات اليومي',
+            'date': selected_date,
+            'type': 'expense',
+            'total_sum': total_sum,
+            'user': request.user
+        }
+        return export_to_pdf(request, context, 'reports/pdf_template.html', "expenses_report")
 
-        # 4. تصدير مصروفات PDF
-    if export_type == 'expense_pdf':
-            total_sum = expenses.aggregate(Sum('amount'))['amount__sum'] or 0  # حساب الإجمالي هنا
-            context = {
-                'data': expenses,
-                'title': 'تقرير المصروفات اليومي',
-                'date': selected_date,
-                'type': 'expense',
-                'total_sum': total_sum,  # نبعته للملف
-                'user': request.user
-            }
-            return export_to_pdf(request, context, 'reports/pdf_template.html', "expenses_report")
-
-    # الحسابات المجمعة للعرض في الصفحة
+    # الحسابات المجمعة
     summary = incomes.aggregate(
         total=Sum('amount'),
         reg_total=Sum('amount', filter=Q(income_type='registration')),
@@ -178,171 +241,463 @@ def monthly_report(request):
     return render(request, 'reports/monthly_report.html', context)
 
 
-@login_required
-@permission_required('courses.view_course', raise_exception=True)
-def courses_report(request):
-    """تقرير أداء الدورات مع إحصائيات زمنية وتصدير"""
-    today = date.today()
-    date_str = request.GET.get('date')
-    selected_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else today
-
-    # تحديد بداية ونهاية الشهر للتاريخ المختار
-    month_start = selected_date.replace(day=1)
-    # الحصول على آخر يوم في الشهر
-    next_month = selected_date.replace(day=28) + timedelta(days=4)
-    month_end = next_month - timedelta(days=next_month.day)
-
-    visible_branches = get_visible_branches(request.user)
-    courses = Course.objects.filter(branches__in=visible_branches, is_active=True).distinct()
-
-    courses_data = []
-    for course in courses:
-        # إحصائيات إجمالية
-        total_data = Income.objects.filter(course=course, branch__in=visible_branches).aggregate(
-            total_income=Sum('amount'),
-            student_count=Count('student', distinct=True)
-        )
-        # إحصائيات يومية (للتاريخ المختار)
-        daily_data = Income.objects.filter(course=course, branch__in=visible_branches, date=selected_date).aggregate(
-            income=Sum('amount'),
-            count=Count('id', filter=Q(income_type='registration'))
-        )
-        # إحصائيات شهرية (للشهر المختار)
-        monthly_data = Income.objects.filter(course=course, branch__in=visible_branches,
-                                             date__range=[month_start, month_end]).aggregate(
-            income=Sum('amount')
-        )
-
-        courses_data.append({
-            'course': course,
-            'daily_registrations': daily_data['count'] or 0,
-            'daily_income': daily_data['income'] or 0,
-            'monthly_income': monthly_data['income'] or 0,
-            'total_registrations': total_data['student_count'] or 0,
-            'total_income': total_data['total_income'] or 0,
-        })
-
-    # --- منطق التصدير ---
-    export_type = request.GET.get('export')
-    if export_type == 'excel':
-        excel_list = []
-        for d in courses_data:
-            excel_list.append({
-                'اسم الدورة': d['course'].name,
-                'النوع': d['course'].get_course_type_display(),
-                'السعر': d['course'].price,
-                'تسجيلات اليوم': d['daily_registrations'],
-                'إيراد اليوم': d['daily_income'],
-                'إيراد الشهر': d['monthly_income'],
-                'إجمالي التسجيلات': d['total_registrations'],
-                'إجمالي الإيرادات': d['total_income'],
-            })
-        df = pd.DataFrame(excel_list)
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename=courses_report_{selected_date}.xlsx'
-        with pd.ExcelWriter(response, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
-        return response
-
-    if export_type == 'pdf':
-        context = {
-            'courses_data': courses_data,
-            'title': 'تقرير أداء الدورات والدبلومات',
-            'date': selected_date,
-            'user': request.user,
-            'type': 'courses'
-        }
-        return export_to_pdf(request, context, 'reports/pdf_template.html', "courses_report")
-
-    return render(request, 'reports/courses_report.html', {
-        'courses_data': courses_data,
-        'date': selected_date
-    })
+# =============================================================================
+# 1. تقارير المعاهد (Branches Reports)
+# =============================================================================
 
 @login_required
-@permission_required('accounts.view_user', raise_exception=True)
-def employees_report(request):
-    """تقرير أداء الموظفين خلال فترة زمنية مع التصدير"""
-    # 1. جلب التواريخ من الطلب (Default: اليوم)
-    start_date_str = request.GET.get('start_date')
-    end_date_str = request.GET.get('end_date')
-
-    today = date.today()
-    start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else today
-    end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else today
-
-    visible_branches = get_visible_branches(request.user)
-    employees = User.objects.filter(branch__in=visible_branches, is_active=True)
-
-    employees_data = []
-    for emp in employees:
-        # فلترة الإيرادات بناءً على الموظف والفترة الزمنية
-        stats = Income.objects.filter(
-            collected_by=emp,
+def branches_report(request):
+    """
+    تقرير شامل للمعاهد:
+    - أكثر المعاهد عددًا من حيث الطلاب
+    - أكثر المعاهد دخلًا
+    - أكثر شهر تحقيقًا للدخل لكل معهد
+    """
+    start_date, end_date = get_date_range(request)
+    
+    # ===== أكثر المعاهد عددًا من حيث الطلاب =====
+    branches_by_students = Branch.objects.filter(
+        student__registration_date__range=[start_date, end_date]
+    ).annotate(
+        students_count=Count('student', distinct=True)
+    ).order_by('-students_count')[:10]
+    
+    # ===== أكثر المعاهد دخلًا (إجمالي) =====
+    # جلب الإيرادات أولاً ثم ربطها بالفروع
+    income_by_branch = Income.objects.filter(
+        date__range=[start_date, end_date]
+    ).values('branch').annotate(
+        total=Sum('amount')
+    ).order_by('-total')[:10]
+    
+    branches_by_income_total = []
+    for item in income_by_branch:
+        try:
+            branch = Branch.objects.get(id=item['branch'])
+            branch.total_income = item['total']
+            branches_by_income_total.append(branch)
+        except Branch.DoesNotExist:
+            pass
+    
+    # ===== أكثر المعاهد دخلًا (حسب الشهر) - نفس النتيجة =====
+    branches_by_month = branches_by_income_total
+    
+    # ===== أكثر شهر تحقيقًا للدخل لكل معهد =====
+    top_months_by_branch = []
+    for branch in Branch.objects.all():
+        top_month = Income.objects.filter(
+            branch=branch,
             date__range=[start_date, end_date]
-        ).aggregate(
-            total=Sum('amount'),
-            reg_count=Count('id', filter=Q(income_type='registration')),
-            ins_count=Count('id', filter=Q(income_type='installment')),
-            cash=Sum('amount', filter=Q(payment_method='cash')),
-            visa=Sum('amount', filter=Q(payment_method='visa')),
-            bank=Sum('amount', filter=Q(payment_method='bank_transfer'))
-        )
-
-        employees_data.append({
-            'employee': emp,
-            'total_collected': stats['total'] or 0,
-            'registrations_count': stats['reg_count'] or 0,
-            'installments_count': stats['ins_count'] or 0,
-            'cash_collected': stats['cash'] or 0,
-            'visa_collected': stats['visa'] or 0,
-            'bank_collected': stats['bank'] or 0,
-        })
-
-    # --- منطق التصدير ---
-    export_type = request.GET.get('export')
-
-    if export_type == 'excel':
-        # تجهيز البيانات للإكسيل
-        excel_data = []
-        for d in employees_data:
-            excel_data.append({
-                'الموظف': d['employee'].get_full_name() or d['employee'].username,
-                'التسجيلات': d['registrations_count'],
-                'التحصيلات': d['installments_count'],
-                'كاش': d['cash_collected'],
-                'فيزا': d['visa_collected'],
-                'بنك': d['bank_collected'],
-                'الإجمالي': d['total_collected']
+        ).annotate(
+            month=TruncMonth('date')
+        ).values('month').annotate(
+            total=Sum('amount')
+        ).order_by('-total').first()
+        
+        if top_month:
+            top_months_by_branch.append({
+                'branch': branch,
+                'month': top_month['month'],
+                'amount': top_month['total']
             })
-        df = pd.DataFrame(excel_data)
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename=employees_report_{start_date}.xlsx'
-        with pd.ExcelWriter(response, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
-        return response
-
-    if export_type == 'pdf':
-        context = {
-            'employees_data': employees_data,
-            'title': 'تقرير أداء الموظفين التفصيلي',
-            'start_date': start_date,
-            'end_date': end_date,
-            'user': request.user,
-            'type': 'employees'  # لتمييز القالب
-        }
-        return export_to_pdf(request, context, 'reports/pdf_template.html', "employees_report")
-
+    
+    # ترتيب حسب المبلغ
+    top_months_by_branch = sorted(top_months_by_branch, key=lambda x: x['amount'], reverse=True)[:10]
+    
     context = {
-        'employees_data': employees_data,
+        'branches_by_students': branches_by_students,
+        'branches_by_income_total': branches_by_income_total,
+        'branches_by_month': branches_by_month,
+        'top_months_by_branch': top_months_by_branch,
         'start_date': start_date,
         'end_date': end_date,
+    }
+    return render(request, 'reports/branches_report.html', context)
+
+
+# =============================================================================
+# 2. تقارير الموظفين (Employees Reports)
+# =============================================================================
+
+@login_required
+def employees_report(request):
+    """
+    تقرير شامل للموظفين:
+    - أكثر الموظفين تسجيلًا للطلاب
+    - أكثر الموظفين من حيث عدد الطلاب المسجلين
+    - أكثر الموظفين إيرادات
+    """
+    start_date, end_date = get_date_range(request)
+    branch = get_branch_filter(request)
+    
+    # ===== أكثر الموظفين تسجيلًا للطلاب (عدد عمليات) =====
+    emp_reg_filter = Q(income__income_type='registration', income__date__range=[start_date, end_date])
+    if branch:
+        emp_reg_filter &= Q(income__branch=branch)
+    
+    employees_by_registrations = User.objects.filter(
+        emp_reg_filter
+    ).annotate(
+        registrations_count=Count('income', distinct=True)
+    ).order_by('-registrations_count')[:10]
+    
+    # ===== أكثر الموظفين من حيث عدد الطلاب المسجلين (طلاب فريدين) =====
+    emp_std_filter = Q(income__date__range=[start_date, end_date])
+    if branch:
+        emp_std_filter &= Q(income__branch=branch)
+    
+    employees_by_students = User.objects.filter(
+        emp_std_filter
+    ).annotate(
+        unique_students=Count('income__student', distinct=True)
+    ).order_by('-unique_students')[:10]
+    
+    # ===== أكثر الموظفين إيرادات =====
+    income_by_employee = Income.objects.filter(
+        date__range=[start_date, end_date]
+    )
+    if branch:
+        income_by_employee = income_by_employee.filter(branch=branch)
+    
+    income_by_employee = income_by_employee.values('collected_by').annotate(
+        total=Sum('amount')
+    ).order_by('-total')[:10]
+    
+    employees_by_income = []
+    for item in income_by_employee:
+        try:
+            emp = User.objects.get(id=item['collected_by'])
+            emp.total_income = item['total']
+            employees_by_income.append(emp)
+        except User.DoesNotExist:
+            pass
+    
+    context = {
+        'employees_by_registrations': employees_by_registrations,
+        'employees_by_students': employees_by_students,
+        'employees_by_income': employees_by_income,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_branch': branch,
+        'branches': Branch.objects.all(),
     }
     return render(request, 'reports/employees_report.html', context)
 
 
-# --- دالة مساعدة لتصدير Excel بالعربي ---
+# =============================================================================
+# 3. تقارير الدورات (Courses Reports)
+# =============================================================================
+
+@login_required
+def courses_report(request):
+    """
+    تقرير شامل للدورات:
+    - أكثر الدورات تسجيلًا (عدد الطلاب)
+    - أكثر الدورات دخلًا
+    - في معهد معين
+    - في فترة زمنية معينة
+    """
+    start_date, end_date = get_date_range(request)
+    branch = get_branch_filter(request)
+    
+    # ===== أكثر الدورات تسجيلًا (عدد الطلاب) =====
+    std_filter = Q(student__registration_date__range=[start_date, end_date])
+    if branch:
+        std_filter &= Q(student__branch=branch)
+    
+    courses_by_students = Course.objects.filter(
+        course_type='course'
+    ).filter(
+        std_filter
+    ).annotate(
+        students_count=Count('student', distinct=True)
+    ).order_by('-students_count')[:10]
+    
+    # ===== أكثر الدورات دخلًا =====
+    income_by_course = Income.objects.filter(
+        date__range=[start_date, end_date],
+        course__course_type='course'
+    )
+    if branch:
+        income_by_course = income_by_course.filter(branch=branch)
+    
+    income_by_course = income_by_course.values('course').annotate(
+        total=Sum('amount')
+    ).order_by('-total')[:10]
+    
+    courses_by_income = []
+    for item in income_by_course:
+        try:
+            course = Course.objects.get(id=item['course'])
+            course.total_income = item['total']
+            courses_by_income.append(course)
+        except Course.DoesNotExist:
+            pass
+    
+    context = {
+        'courses_by_students': courses_by_students,
+        'courses_by_income': courses_by_income,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_branch': branch,
+        'branches': Branch.objects.all(),
+    }
+    return render(request, 'reports/courses_report.html', context)
+
+
+# =============================================================================
+# 4. تقارير الدبلومات (Diplomas Reports)
+# =============================================================================
+
+@login_required
+def diplomas_report(request):
+    """
+    تقرير شامل للدبلومات:
+    - أكثر الدبلومات تسجيلًا
+    - عدد الطلاب المسجلين في كل دبلوم
+    - أكثر الدبلومات تحقيقًا للدخل
+    """
+    start_date, end_date = get_date_range(request)
+    branch = get_branch_filter(request)
+    
+    # ===== أكثر الدبلومات تسجيلًا =====
+    std_filter = Q(student__registration_date__range=[start_date, end_date])
+    if branch:
+        std_filter &= Q(student__branch=branch)
+    
+    diplomas_by_students = Course.objects.filter(
+        course_type='diploma'
+    ).filter(
+        std_filter
+    ).annotate(
+        students_count=Count('student', distinct=True)
+    ).order_by('-students_count')[:10]
+    
+    # ===== أكثر الدبلومات دخلًا =====
+    income_by_diploma = Income.objects.filter(
+        date__range=[start_date, end_date],
+        course__course_type='diploma'
+    )
+    if branch:
+        income_by_diploma = income_by_diploma.filter(branch=branch)
+    
+    income_by_diploma = income_by_diploma.values('course').annotate(
+        total=Sum('amount')
+    ).order_by('-total')[:10]
+    
+    diplomas_by_income = []
+    for item in income_by_diploma:
+        try:
+            diploma = Course.objects.get(id=item['course'])
+            diploma.total_income = item['total']
+            diplomas_by_income.append(diploma)
+        except Course.DoesNotExist:
+            pass
+    
+    # ===== تفاصيل كل دبلوم =====
+    diplomas_detail = Course.objects.filter(course_type='diploma')
+    
+    context = {
+        'diplomas_by_students': diplomas_by_students,
+        'diplomas_by_income': diplomas_by_income,
+        'diplomas_detail': diplomas_detail,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_branch': branch,
+        'branches': Branch.objects.all(),
+    }
+    return render(request, 'reports/diplomas_report.html', context)
+
+
+# =============================================================================
+# 5. تقارير الفترات الزمنية (Time Analysis Reports)
+# =============================================================================
+
+@login_required
+def time_analysis_report(request):
+    """
+    تحليل الفترات الزمنية:
+    - أكثر فترات التسجيل (ساعات / أيام)
+    - أكثر فترات تحقيق الدخل
+    - تحليل التسجيل حسب الوقت (صباح/مساء)
+    """
+    start_date, end_date = get_date_range(request)
+    branch = get_branch_filter(request)
+    
+    # فلتر الفرع
+    base_filter = Q(date__range=[start_date, end_date])
+    student_filter = Q(registration_date__range=[start_date, end_date])
+    if branch:
+        base_filter &= Q(branch=branch)
+        student_filter &= Q(branch=branch)
+    
+    # ===== أكثر الأيام تسجيلًا =====
+    top_days = Income.objects.filter(
+        base_filter
+    ).annotate(
+        day=TruncDate('date')
+    ).values('day').annotate(
+        count=Count('id'),
+        total=Sum('amount')
+    ).order_by('-count')[:10]
+    
+    # ===== أكثر الأيام دخلًا =====
+    top_income_days = Income.objects.filter(
+        base_filter
+    ).annotate(
+        day=TruncDate('date')
+    ).values('day').annotate(
+        total=Sum('amount')
+    ).order_by('-total')[:10]
+    
+    # ===== أكثر الشهور تسجيلًا =====
+    top_months = Income.objects.filter(
+        base_filter
+    ).annotate(
+        month=TruncMonth('date')
+    ).values('month').annotate(
+        count=Count('id'),
+        total=Sum('amount')
+    ).order_by('-count')[:10]
+    
+    # ===== تحليل حسب وقت اليوم (صباح/مساء) =====
+    morning_income = Income.objects.filter(
+        base_filter,
+        created_at__hour__lt=12
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    afternoon_income = Income.objects.filter(
+        base_filter,
+        created_at__hour__gte=12,
+        created_at__hour__lt=17
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    evening_income = Income.objects.filter(
+        base_filter,
+        created_at__hour__gte=17
+    ).aggregate(total=Sum('amount'))['total'] or 0
+    
+    time_periods = [
+        {'name': 'الصباح (6 ص - 12 ظ)', 'amount': morning_income},
+        {'name': 'الفترة المسائية (12 ظ - 5 م)', 'amount': afternoon_income},
+        {'name': 'المساء (5 م - 10 م)', 'amount': evening_income},
+    ]
+    
+    context = {
+        'top_days': top_days,
+        'top_income_days': top_income_days,
+        'top_months': top_months,
+        'time_periods': time_periods,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_branch': branch,
+        'branches': Branch.objects.all(),
+    }
+    return render(request, 'reports/time_analysis.html', context)
+
+
+# =============================================================================
+# KPIs & Dashboard Widgets
+# =============================================================================
+
+@login_required
+def kpis_dashboard(request):
+    """
+    مؤشرات الأداء الرئيسية (KPIs):
+    - إجمالي الطلاب
+    - إجمالي الإيرادات
+    - عدد التسجيلات
+    - متوسط قيمة الطالب
+    - أعلى معهد
+    - أعلى موظف
+    """
+    start_date, end_date = get_date_range(request)
+    branch = get_branch_filter(request)
+    
+    # ===== إجمالي الطلاب =====
+    std_filter = Q(registration_date__range=[start_date, end_date])
+    if branch:
+        std_filter &= Q(branch=branch)
+    total_students = Student.objects.filter(std_filter).count()
+    
+    # ===== إجمالي الإيرادات =====
+    inc_filter = Q(date__range=[start_date, end_date])
+    if branch:
+        inc_filter &= Q(branch=branch)
+    total_income = Income.objects.filter(inc_filter).aggregate(
+        total=Sum('amount')
+    )['total'] or Decimal('0')
+    
+    # ===== عدد التسجيلات =====
+    total_registrations = Income.objects.filter(
+        inc_filter,
+        income_type='registration'
+    ).count()
+    
+    # ===== متوسط قيمة الطالب =====
+    avg_student_value = Income.objects.filter(inc_filter).aggregate(
+        avg=Avg('amount')
+    )['avg'] or Decimal('0')
+    
+    # ===== أعلى معهد =====
+    top_branch_data = Income.objects.filter(
+        date__range=[start_date, end_date]
+    )
+    if branch:
+        top_branch_data = top_branch_data.filter(branch=branch)
+    
+    top_branch_data = top_branch_data.values('branch').annotate(
+        total=Sum('amount')
+    ).order_by('-total').first()
+    
+    top_branch = None
+    if top_branch_data:
+        try:
+            top_branch = Branch.objects.get(id=top_branch_data['branch'])
+            top_branch.total_income = top_branch_data['total']
+        except Branch.DoesNotExist:
+            pass
+    
+    # ===== أعلى موظف =====
+    top_employee_data = Income.objects.filter(
+        date__range=[start_date, end_date]
+    )
+    if branch:
+        top_employee_data = top_employee_data.filter(branch=branch)
+    
+    top_employee_data = top_employee_data.values('collected_by').annotate(
+        total=Sum('amount')
+    ).order_by('-total').first()
+    
+    top_employee = None
+    if top_employee_data and top_employee_data['collected_by']:
+        try:
+            top_employee = User.objects.get(id=top_employee_data['collected_by'])
+            top_employee.total_income = top_employee_data['total']
+        except User.DoesNotExist:
+            pass
+    
+    context = {
+        'total_students': total_students,
+        'total_income': total_income,
+        'total_registrations': total_registrations,
+        'avg_student_value': avg_student_value,
+        'top_branch': top_branch,
+        'top_employee': top_employee,
+        'start_date': start_date,
+        'end_date': end_date,
+        'selected_branch': branch,
+        'branches': Branch.objects.all(),
+    }
+    return render(request, 'reports/kpis_dashboard.html', context)
+
+
+# =============================================================================
+# Helper Functions for Export
+# =============================================================================
+
 def export_to_excel(queryset, filename, columns_map):
+    """دالة مساعدة لتصدير Excel بالعربي"""
     # تحويل الـ Queryset إلى DataFrame
     data = list(queryset.values(*columns_map.keys()))
     df = pd.DataFrame(data)
@@ -358,12 +713,14 @@ def export_to_excel(queryset, filename, columns_map):
     return response
 
 
-# --- دالة مساعدة لتصدير PDF بالعربي ---
 def export_to_pdf(request, context, template_name, filename):
+    """دالة مساعدة لتصدير PDF بالعربي"""
+    if not HTML:
+        return HttpResponse("PDF export requires WeasyPrint library", status=500)
+    
     html_string = render_to_string(template_name, context)
     html = HTML(string=html_string, base_url=request.build_absolute_uri())
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{filename}.pdf"'
-    # استخدام الخطوط المتوفرة في النظام لدعم العربي (مثل DejaVu Sans)
     html.write_pdf(response)
     return response

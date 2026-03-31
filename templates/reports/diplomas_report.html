@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 
-{% block title %}تقارير الموظفين{% endblock %}
+{% block title %}تقارير الدبلومات{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">
-            <i class="fas fa-user-tie text-primary me-2"></i>
-            تقارير الموظفين
+            <i class="fas fa-graduation-cap text-primary me-2"></i>
+            تقارير الدبلومات
         </h2>
-        <a href="{% url 'reports:kpis_dashboard' %}" class="btn btn-outline-primary">
-            <i class="fas fa-chart-line me-1"></i>
-            لوحة المؤشرات
+        <a href="{% url 'reports:courses_report' %}" class="btn btn-outline-info">
+            <i class="fas fa-book me-1"></i>
+            تقارير الدورات
         </a>
     </div>
 
@@ -65,55 +65,13 @@
     </div>
 
     <div class="row">
-        <!-- أكثر الموظفين تسجيلًا -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">
-                        <i class="fas fa-user-plus me-2"></i>
-                        أكثر الموظفين تسجيلًا
-                    </h5>
-                </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">التسجيلات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for emp in employees_by_registrations %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-info fs-6">{{ emp.registrations_count }}</span>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
-                                        لا توجد بيانات
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- أكثر الموظفين طلابًا -->
-        <div class="col-lg-4 mb-4">
+        <!-- أكثر الدبلومات تسجيلًا -->
+        <div class="col-lg-6 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-users me-2"></i>
-                        أكثر الموظفين (طلاب)
+                        أكثر الدبلومات تسجيلًا
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -122,17 +80,17 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">الطلاب</th>
+                                    <th>الدبلومة</th>
+                                    <th class="text-center">عدد الطلاب</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for emp in employees_by_students %}
+                                {% for diploma in diplomas_by_students %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ diploma.name }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-success fs-6">{{ emp.unique_students }}</span>
+                                        <span class="badge bg-success fs-6">{{ diploma.students_count|default:0 }}</span>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -149,13 +107,13 @@
             </div>
         </div>
 
-        <!-- أكثر الموظفين إيرادات -->
-        <div class="col-lg-4 mb-4">
+        <!-- أكثر الدبلومات دخلًا -->
+        <div class="col-lg-6 mb-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header bg-warning text-dark">
+                <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-money-bill-wave me-2"></i>
-                        أكثر الموظفين إيرادات
+                        أكثر الدبلومات دخلًا
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -164,19 +122,19 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
+                                    <th>الدبلومة</th>
                                     <th class="text-center">الإيرادات</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for emp in employees_by_income %}
+                                {% for diploma in diplomas_by_income %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ diploma.name }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-warning text-dark fs-6">
-                                            {% if emp.total_income %}
-                                                {{ emp.total_income|floatformat:0 }} ر.س
+                                        <span class="badge bg-primary fs-6">
+                                            {% if diploma.total_income %}
+                                                {{ diploma.total_income|floatformat:0 }} ر.س
                                             {% else %}
                                                 0 ر.س
                                             {% endif %}
@@ -186,6 +144,58 @@
                                 {% empty %}
                                 <tr>
                                     <td colspan="3" class="text-center py-4 text-muted">
+                                        لا توجد بيانات
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تفاصيل جميع الدبلومات -->
+        <div class="col-12 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>
+                        تفاصيل جميع الدبلومات
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>الدبلومة</th>
+                                    <th>السعر</th>
+                                    <th class="text-center">عدد الطلاب</th>
+                                    <th class="text-center">الإيرادات</th>
+                                    <th class="text-center">متوسط للطالب</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for diploma in diplomas_detail %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ diploma.name }}</td>
+                                    <td>{{ diploma.price|floatformat:0 }} ر.س</td>
+                                    <td class="text-center">{{ diploma.students_count|default:0 }}</td>
+                                    <td class="text-center">{{ diploma.total_income|default:0|floatformat:0 }} ر.س</td>
+                                    <td class="text-center">
+                                        {% if diploma.students_count > 0 %}
+                                            {{ diploma.total_income|default:0|div:diploma.students_count|floatformat:0 }} ر.س
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
                                         لا توجد بيانات
                                     </td>
                                 </tr>

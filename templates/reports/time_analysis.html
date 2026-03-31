@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
-{% block title %}تقارير الموظفين{% endblock %}
+{% block title %}تحليل الفترات الزمنية{% endblock %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">
-            <i class="fas fa-user-tie text-primary me-2"></i>
-            تقارير الموظفين
+            <i class="fas fa-clock text-primary me-2"></i>
+            تحليل الفترات الزمنية
         </h2>
         <a href="{% url 'reports:kpis_dashboard' %}" class="btn btn-outline-primary">
             <i class="fas fa-chart-line me-1"></i>
@@ -64,56 +64,44 @@
         {% endif %}
     </div>
 
-    <div class="row">
-        <!-- أكثر الموظفين تسجيلًا -->
-        <div class="col-lg-4 mb-4">
-            <div class="card shadow-sm h-100">
+    <!-- Time Periods Analysis -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-user-plus me-2"></i>
-                        أكثر الموظفين تسجيلًا
+                        <i class="fas fa-sun me-2"></i>
+                        تحليل حسب فترات اليوم
                     </h5>
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">التسجيلات</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for emp in employees_by_registrations %}
-                                <tr>
-                                    <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-info fs-6">{{ emp.registrations_count }}</span>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
-                                        لا توجد بيانات
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="card-body">
+                    <div class="row">
+                        {% for period in time_periods %}
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted">{{ period.name }}</h6>
+                                    <h3 class="text-primary mb-0">
+                                        {{ period.amount|floatformat:0 }} ر.س
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- أكثر الموظفين طلابًا -->
+    <div class="row">
+        <!-- أكثر الأيام تسجيلًا -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-users me-2"></i>
-                        أكثر الموظفين (طلاب)
+                        <i class="fas fa-calendar-day me-2"></i>
+                        أكثر الأيام تسجيلًا
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -122,17 +110,59 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">الطلاب</th>
+                                    <th>اليوم</th>
+                                    <th class="text-center">العمليات</th>
+                                    <th class="text-center">المبلغ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for emp in employees_by_students %}
+                                {% for day in top_days %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ day.day|date:"Y-m-d" }}</td>
+                                    <td class="text-center">{{ day.count }}</td>
+                                    <td class="text-center">{{ day.total|floatformat:0 }} ر.س</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        لا توجد بيانات
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- أكثر الأيام دخلًا -->
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-money-bill-wave me-2"></i>
+                        أكثر الأيام دخلًا
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>اليوم</th>
+                                    <th class="text-center">الإيرادات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for day in top_income_days %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ day.day|date:"Y-m-d" }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-success fs-6">{{ emp.unique_students }}</span>
+                                        <span class="badge bg-primary">{{ day.total|floatformat:0 }} ر.س</span>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -149,13 +179,13 @@
             </div>
         </div>
 
-        <!-- أكثر الموظفين إيرادات -->
+        <!-- أكثر الشهور تسجيلًا -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-warning text-dark">
                     <h5 class="mb-0">
-                        <i class="fas fa-money-bill-wave me-2"></i>
-                        أكثر الموظفين إيرادات
+                        <i class="fas fa-calendar-alt me-2"></i>
+                        أكثر الشهور تسجيلًا
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -164,28 +194,22 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">الإيرادات</th>
+                                    <th>الشهر</th>
+                                    <th class="text-center">العمليات</th>
+                                    <th class="text-center">المبلغ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for emp in employees_by_income %}
+                                {% for month in top_months %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-warning text-dark fs-6">
-                                            {% if emp.total_income %}
-                                                {{ emp.total_income|floatformat:0 }} ر.س
-                                            {% else %}
-                                                0 ر.س
-                                            {% endif %}
-                                        </span>
-                                    </td>
+                                    <td>{{ month.month|date:"F Y" }}</td>
+                                    <td class="text-center">{{ month.count }}</td>
+                                    <td class="text-center">{{ month.total|floatformat:0 }} ر.س</td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
+                                    <td colspan="4" class="text-center py-4 text-muted">
                                         لا توجد بيانات
                                     </td>
                                 </tr>
