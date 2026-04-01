@@ -158,6 +158,12 @@
                     {{ user.get_user_type_display }}
                 </span>
                 
+                <div class="mt-3">
+                    <a href="{% url 'accounts:password_change' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-key me-1"></i>تغيير كلمة المرور
+                    </a>
+                </div>
+                
                 {% if user_rank != '-' %}
                 <div class="rank-badge mt-3">
                     <i class="fas fa-trophy"></i>

@@ -423,25 +423,30 @@
                     {% csrf_token %}
                     
                     <div class="form-group" id="usernameGroup">
-                        <label class="form-label">اسم المستخدم</label>
+                        <label class="form-label">البريد الإلكتروني أو اسم المستخدم</label>
                         <div class="input-group-custom">
                             <input 
                                 type="text" 
                                 name="username" 
                                 id="username"
                                 class="form-control" 
-                                placeholder="أدخل اسم المستخدم"
+                                placeholder="أدخل بريدك الإلكتروني أو اسم المستخدم"
                                 autocomplete="username"
                             >
-                            <i class="fas fa-user input-icon"></i>
+                            <i class="fas fa-envelope input-icon"></i>
                         </div>
                         <span class="error-message">
-                            <i class="fas fa-exclamation-triangle"></i> يرجى إدخال اسم المستخدم
+                            <i class="fas fa-exclamation-triangle"></i> يرجى إدخال البريد الإلكتروني أو اسم المستخدم
                         </span>
                     </div>
                     
                     <div class="form-group" id="passwordGroup">
-                        <label class="form-label">كلمة المرور</label>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0">كلمة المرور</label>
+                            <a href="{% url 'accounts:password_reset' %}" class="text-decoration-none small" style="color: #667eea;">
+                                <i class="fas fa-key me-1"></i>نسيت كلمة المرور؟
+                            </a>
+                        </div>
                         <div class="input-group-custom">
                             <input 
                                 type="password" 
