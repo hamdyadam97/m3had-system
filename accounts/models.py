@@ -20,6 +20,9 @@ class User(AbstractUser):
     is_active = models.BooleanField(default=True, verbose_name='نشط')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
 
+    email = models.EmailField(unique=True, verbose_name='البريد الإلكتروني')
+    REQUIRED_FIELDS = ['email', 'first_name', 'last_name']  # الإيميل مطلوب أساسي
+
     def has_custom_perm(self, perm_name):
         return self.has_perm(f'transactions.{perm_name}')  # مثال
 
