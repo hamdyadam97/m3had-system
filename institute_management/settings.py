@@ -212,7 +212,7 @@ EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 # EMAIL_HOST_USER و EMAIL_HOST_PASSWORD يُحملان من .env (سطر 23-24)
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or ''  # Your verified sender email
+DEFAULT_FROM_EMAIL = 'hamdy.adam@ararhni.com' # Your verified sender email
 
 # ==================== WhatsApp Settings ====================
 WHATSAPP_PROVIDER = 'ultramsg'

@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 class NotificationService:
     """خدمة إرسال الإشعارات عبر البريد وواتساب"""
-    
+
     @staticmethod
     def get_settings():
         """الحصول على إعدادات الإشعارات"""
         return NotificationSettings.get_settings()
-    
+
     @classmethod
     def send_reminder(cls, installment, reminder_type):
         """
@@ -25,7 +25,7 @@ class NotificationService:
         """
         settings = cls.get_settings()
         student = installment.plan.student
-        
+
         # إعداد بيانات القالب
         template_data = {
             'student_name': student.full_name,
@@ -35,7 +35,7 @@ class NotificationService:
             'overdue_days': installment.days_overdue(),
             'contact_phone': settings.contact_phone,
         }
-        
+
         # اختيار قالب الرسالة
         if reminder_type == '2days':
             template = settings.reminder_2days_template
@@ -47,11 +47,11 @@ class NotificationService:
             template = settings.overdue_template
         else:
             return False
-        
+
         message = template.format(**template_data)
-        
+
         results = {'email': False, 'whatsapp': False}
-        
+
         # إرسال عبر البريد
         if settings.email_enabled and student.email:
             results['email'] = cls._send_email(
@@ -61,7 +61,7 @@ class NotificationService:
                 installment=installment,
                 reminder_type=reminder_type
             )
-        
+
         # إرسال عبر واتساب
         if settings.whatsapp_enabled and student.phone:
             results['whatsapp'] = cls._send_whatsapp(
@@ -70,14 +70,14 @@ class NotificationService:
                 installment=installment,
                 reminder_type=reminder_type
             )
-        
+
         return results['email'] or results['whatsapp']
-    
+
     @classmethod
     def _send_email(cls, to_email, subject, message, installment, reminder_type):
         """إرسال بريد إلكتروني"""
         settings_obj = cls.get_settings()
-        
+
         try:
             # إنشاء سجل الإشعار
             log = NotificationLog.objects.create(
@@ -90,20 +90,20 @@ class NotificationService:
                 message=message,
                 status='pending'
             )
-            
-            # إعدادات Django للبريد (المفاتيح الحساسة من settings/.env فقط)
+
+            # إعدادات Django للبريد
             from django.core.mail import get_connection
-            
+
             connection = get_connection(
                 host=settings_obj.email_host or settings.EMAIL_HOST,
                 port=settings_obj.email_port or settings.EMAIL_PORT,
-                username=settings.EMAIL_HOST_USER,  # من .env فقط
-                password=settings.EMAIL_HOST_PASSWORD,  # من .env فقط
+                username=settings_obj.email_host_user or settings.EMAIL_HOST_USER,
+                password=settings_obj.email_host_password or settings.EMAIL_HOST_PASSWORD,
                 use_tls=settings_obj.email_use_tls,
             )
-            
-            from_email = settings_obj.email_from_address or settings.EMAIL_HOST_USER or settings.DEFAULT_FROM_EMAIL
-            
+
+            from_email = settings_obj.email_from_address or settings.DEFAULT_FROM_EMAIL
+
             send_mail(
                 subject=subject,
                 message=message,
@@ -112,17 +112,17 @@ class NotificationService:
                 connection=connection,
                 fail_silently=False,
             )
-            
+
             # تحديث السجل
             log.status = 'sent'
             log.save()
-            
+
             # تحديث حالة القسط
             cls._update_installment_reminder_status(installment, reminder_type)
-            
+
             logger.info(f"Email sent successfully to {to_email}")
             return True
-            
+
         except Exception as e:
             if 'log' in locals():
                 log.status = 'failed'
@@ -130,20 +130,16 @@ class NotificationService:
                 log.save()
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
             return False
-    
+
     @classmethod
     def _send_whatsapp(cls, phone, message, installment, reminder_type):
         """إرسال رسالة واتساب"""
         settings_obj = cls.get_settings()
-        
-        # المفاتيح الحساسة من settings/.env فقط
-        whatsapp_api_token = getattr(settings, 'WHATSAPP_API_TOKEN', '')
-        whatsapp_instance_id = settings_obj.whatsapp_instance_id or getattr(settings, 'WHATSAPP_INSTANCE_ID', '')
-        
-        if not whatsapp_api_token or not whatsapp_instance_id:
-            logger.warning("WhatsApp API not configured (WHATSAPP_API_TOKEN or WHATSAPP_INSTANCE_ID missing in .env)")
+
+        if not settings_obj.whatsapp_api_key or not settings_obj.whatsapp_instance_id:
+            logger.warning("WhatsApp API not configured")
             return False
-        
+
         try:
             # إنشاء سجل الإشعار
             log = NotificationLog.objects.create(
@@ -155,32 +151,32 @@ class NotificationService:
                 message=message,
                 status='pending'
             )
-            
+
             # تنسيق رقم الهاتف
             formatted_phone = cls._format_phone_number(phone)
-            
+
             # إرسال عبر API
             api_url = settings_obj.whatsapp_api_url.format(
-                instance_id=whatsapp_instance_id
+                instance_id=settings_obj.whatsapp_instance_id
             )
-            
+
             payload = {
-                'token': whatsapp_api_token,
+                'token': settings_obj.whatsapp_api_key,
                 'to': formatted_phone,
                 'body': message,
             }
-            
+
             response = requests.post(api_url, data=payload, timeout=30)
             response_data = response.json()
-            
+
             if response.status_code == 200 and response_data.get('sent'):
                 log.status = 'sent'
                 log.response_data = json.dumps(response_data)
                 log.save()
-                
+
                 # تحديث حالة القسط
                 cls._update_installment_reminder_status(installment, reminder_type)
-                
+
                 logger.info(f"WhatsApp message sent successfully to {formatted_phone}")
                 return True
             else:
@@ -190,7 +186,7 @@ class NotificationService:
                 log.save()
                 logger.error(f"Failed to send WhatsApp message: {response_data}")
                 return False
-                
+
         except Exception as e:
             if 'log' in locals():
                 log.status = 'failed'
@@ -198,21 +194,21 @@ class NotificationService:
                 log.save()
             logger.error(f"Failed to send WhatsApp message to {phone}: {str(e)}")
             return False
-    
+
     @classmethod
     def _format_phone_number(cls, phone):
         """تنسيق رقم الهاتف للواتساب"""
         # إزالة المسافات والرموز
         phone = phone.replace(' ', '').replace('-', '').replace('+', '')
-        
+
         # إضافة كود الدولة إذا لم يكن موجوداً
         if phone.startswith('0'):
-            phone = '+966' + phone[1:]  # افتراض السعودية
+            phone = '966' + phone[1:]  # افتراض السعودية
         elif not phone.startswith('966'):
-            phone = '+966' + phone
-        
+            phone = '966' + phone
+
         return phone
-    
+
     @classmethod
     def _update_installment_reminder_status(cls, installment, reminder_type):
         """تحديث حالة الإشعار للقسط"""
@@ -224,12 +220,12 @@ class NotificationService:
             installment.reminder_sent_due = True
         elif reminder_type == 'overdue':
             installment.overdue_notice_sent = True
-        
+
         installment.save(update_fields=[
-            'reminder_sent_2days', 'reminder_sent_1day', 
+            'reminder_sent_2days', 'reminder_sent_1day',
             'reminder_sent_due', 'overdue_notice_sent'
         ])
-    
+
     @classmethod
     def process_reminders(cls):
         """
@@ -237,12 +233,12 @@ class NotificationService:
         تُستدعى هذه الدالة بشكل دوري (مثلاً كل ساعة)
         """
         from ..installment_models import Installment
-        
+
         settings = cls.get_settings()
         today = timezone.now().date()
-        
+
         sent_count = 0
-        
+
         # 1. تذكير قبل يومين
         if settings.reminder_2days_before:
             target_date = today + timezone.timedelta(days=2)
@@ -251,11 +247,11 @@ class NotificationService:
                 due_date=target_date,
                 reminder_sent_2days=False
             )
-            
+
             for installment in installments:
                 if cls.send_reminder(installment, '2days'):
                     sent_count += 1
-        
+
         # 2. تذكير قبل يوم
         if settings.reminder_1day_before:
             target_date = today + timezone.timedelta(days=1)
@@ -264,11 +260,11 @@ class NotificationService:
                 due_date=target_date,
                 reminder_sent_1day=False
             )
-            
+
             for installment in installments:
                 if cls.send_reminder(installment, '1day'):
                     sent_count += 1
-        
+
         # 3. تذكير يوم الاستحقاق
         if settings.reminder_on_due_date:
             installments = Installment.objects.filter(
@@ -276,11 +272,11 @@ class NotificationService:
                 due_date=today,
                 reminder_sent_due=False
             )
-            
+
             for installment in installments:
                 if cls.send_reminder(installment, 'due'):
                     sent_count += 1
-        
+
         # 4. إشعار التأخر
         if settings.send_overdue_notice:
             installments = Installment.objects.filter(
@@ -288,10 +284,10 @@ class NotificationService:
                 due_date__lt=today,
                 overdue_notice_sent=False
             )
-            
+
             for installment in installments:
                 if cls.send_reminder(installment, 'overdue'):
                     sent_count += 1
-        
+
         logger.info(f"Processed {sent_count} reminders")
         return sent_count
