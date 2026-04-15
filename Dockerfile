@@ -10,8 +10,9 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies required by WeasyPrint, psycopg2-binary, Pillow, etc.
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install system dependencies - معالجة مشاكل apt-get
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     libcairo2 \
@@ -21,11 +22,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     shared-mime-info \
     fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+    # إضافات مهمة لـ WeasyPrint
+    libxml2 \
+    libxslt1.1 \
+    zlib1g \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 # Install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
