@@ -22,7 +22,6 @@ RUN apt-get update --fix-missing && \
     libffi-dev \
     shared-mime-info \
     fonts-liberation \
-    # إضافات مهمة لـ WeasyPrint
     libxml2 \
     libxslt1.1 \
     zlib1g \

@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: institute_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-institute_db}
+      POSTGRES_USER: ${DB_USER:-institute_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-institute_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-institute_user} -d ${DB_NAME:-institute_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - institute_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: institute_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - institute_network
+
+  web:
+    image: hamdyadam/institute-management:latest
+    container_name: institute_web
+    restart: unless-stopped
+    command: ["gunicorn", "institute_management.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    expose:
+      - "8000"
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - institute_network
+
+  celery:
+    image: hamdyadam/institute-management:latest
+    container_name: institute_celery
+    restart: unless-stopped
+    command: ["celery", "-A", "institute_management", "worker", "-l", "info"]
+    volumes:
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - institute_network
+
+  celery-beat:
+    image: hamdyadam/institute-management:latest
+    container_name: institute_celery_beat
+    restart: unless-stopped
+    command: ["celery", "-A", "institute_management", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+    volumes:
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - institute_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: institute_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
+    depends_on:
+      - web
+    networks:
+      - institute_network
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot
+    container_name: institute_certbot
+    restart: unless-stopped
+    volumes:
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - institute_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:
+  logs_volume:
+
+networks:
+  institute_network:
+    driver: bridge
