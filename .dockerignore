@@ -1,0 +1,44 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+.venv
+venv
+env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Local database (will use PostgreSQL in Docker)
+db.sqlite3
+
+# Static/Media generated locally
+staticfiles
+media
+
+# Logs
+logs/*.log
+
+# Environment files
+.env
+.env.local
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+*.md

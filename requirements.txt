@@ -52,3 +52,6 @@ zopfli==0.4.1
 # PostgreSQL support
 psycopg2-binary==2.9.9
 dj-database-url==2.1.0
+
+# WSGI server for production
+gunicorn==23.0.0

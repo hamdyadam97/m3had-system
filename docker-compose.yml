@@ -1,31 +1,107 @@
 version: '3.8'
 
 services:
-  # Redis for Celery
+  db:
+    image: postgres:15-alpine
+    container_name: institute_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-institute_db}
+      POSTGRES_USER: ${DB_USER:-institute_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-institute_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-institute_user} -d ${DB_NAME:-institute_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     container_name: institute_redis
-    ports:
-      - "6379:6379"
+    restart: unless-stopped
     volumes:
       - redis_data:/data
-    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  # Django web server (optional - if you want to use Docker for Django too)
-  # Uncomment if needed
-  # web:
-  #   build: .
-  #   container_name: institute_web
-  #   command: python manage.py runserver 0.0.0.0:8000
-  #   volumes:
-  #     - .:/app
-  #   ports:
-  #     - "8000:8000"
-  #   depends_on:
-  #     - redis
-  #   environment:
-  #     - CELERY_BROKER_URL=redis://redis:6379/0
-  #     - CELERY_RESULT_BACKEND=redis://redis:6379/0
+  web:
+    build: .
+    container_name: institute_web
+    restart: unless-stopped
+    command: ["gunicorn", "institute_management.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3", "--timeout", "120"]
+    volumes:
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery:
+    build: .
+    container_name: institute_celery
+    restart: unless-stopped
+    command: ["celery", "-A", "institute_management", "worker", "-l", "info"]
+    volumes:
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build: .
+    container_name: institute_celery_beat
+    restart: unless-stopped
+    command: ["celery", "-A", "institute_management", "beat", "-l", "info", "--scheduler", "django_celery_beat.schedulers:DatabaseScheduler"]
+    volumes:
+      - media_volume:/app/media
+      - logs_volume:/app/logs
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://${DB_USER:-institute_user}:${DB_PASSWORD:-institute_pass}@db:5432/${DB_NAME:-institute_db}
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      DEBUG: "False"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
+  postgres_data:
   redis_data:
+  static_volume:
+  media_volume:
+  logs_volume:
