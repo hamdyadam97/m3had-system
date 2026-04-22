@@ -4,19 +4,20 @@ from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib import messages
-from django.db.models import Sum
-from datetime import date, timezone
+from django.db.models import Sum, Q
+from datetime import date
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
 from branches.models import Branch
-from students.models import Student
 from .models import Income, Expense, DailySummary
-from .forms import IncomeForm, ExpenseForm
+from .forms import (
+    IncomeForm, ExpenseForm,
+    ExcelStyleTransactionFormSet, ExcelStyleExpenseFormSet,
+    ExcelExpenseImportForm, ExcelExpenseMappingForm,
+)
 from django.core.paginator import Paginator
-from accounts.notifications import notify_managers_on_payment
-
-
 @login_required
 @permission_required('transactions.view_income', raise_exception=True)
 def income_list(request):
@@ -24,7 +25,7 @@ def income_list(request):
 
     # 1. تحسين الأداء بجلب البيانات المرتبطة
     income_queryset = Income.objects.select_related(
-        'student', 'course', 'branch', 'collected_by'
+        'branch', 'collected_by'
     ).all().order_by('-date', '-created_at')
 
     # 2. فلترة البيانات بناءً على الرتبة (Scope)
@@ -53,55 +54,6 @@ def income_list(request):
 
     return render(request, 'transactions/income_list.html', {'incomes': incomes})
 
-
-@login_required
-@permission_required('transactions.add_income', raise_exception=True)
-def income_add(request):
-    """إضافة إيراد وتثبيت الفرع والمحصل تلقائياً"""
-    if request.method == 'POST':
-        form = IncomeForm(request.POST, user=request.user)
-
-        if form.is_valid():
-            income = form.save(commit=False)
-
-            # ✅ الفرع - من الطالب أو من المستخدم
-            if not income.branch_id:
-                if income.student and income.student.branch:
-                    income.branch = income.student.branch
-                elif request.user.branch:
-                    income.branch = request.user.branch
-                else:
-                    messages.error(request, 'خطأ: لم يتم تحديد الفرع')
-                    return render(request, 'transactions/income_form.html', {
-                        'form': form,
-                        'title': 'تسجيل إيراد جديد'
-                    })
-
-            income.collected_by = request.user
-
-            try:
-                income.save()
-                
-                # إرسال الإشعارات للمديرين والطالب
-                try:
-                    print('before send ')
-                    notify_managers_on_payment(income)
-                except Exception as notify_error:
-                    logger.error(f"Notification error: {notify_error}")
-                
-                messages.success(request, 'تم تسجيل الإيراد بنجاح!')
-                return redirect('transactions:income_list')
-            except Exception as e:
-                messages.error(request, f'خطأ في الحفظ: {str(e)}')
-        else:
-            messages.error(request, f'خطأ في البيانات: {form.errors}')
-    else:
-        form = IncomeForm(user=request.user)
-
-    return render(request, 'transactions/income_form.html', {
-        'form': form,
-        'title': 'تسجيل إيراد جديد'
-    })
 
 
 @login_required
@@ -211,212 +163,347 @@ def daily_summary(request):
     return render(request, 'transactions/daily_summary.html', context)
 
 
-@login_required
-def get_students_by_type(request):
-    """جلب الطلاب حسب نوع الإيراد - يشتغل في كل الحالات"""
-    income_type = request.GET.get('income_type')
-    branch_id = request.GET.get('branch_id')
-
-    if not income_type:
-        return JsonResponse({'students': []})
-
-    user = request.user
-
-    # تحديد الفروع المتاحة للمستخدم
-    if branch_id:
-        # فيه فرع محدد في الطلب (صفحة إضافة إيراد)
-        branches = [int(branch_id)]
-    elif user.branch:
-        # المستخدم عنده فرع (موظف عادي)
-        branches = [user.branch.id]
-    elif user.is_superuser or user.user_type == 'admin':
-        # أدمن من غير فرع - نجيب كل الفروع
-        from branches.models import Branch
-        branches = list(Branch.objects.filter(is_active=True).values_list('id', flat=True))
-    elif user.user_type == 'regional_manager':
-        # مدير إقليمي
-        branches = list(user.managed_branches.values_list('id', flat=True))
-    else:
-        return JsonResponse({'students': []})
-
-    # جلب الطلاب من الفروع المتاحة
-    base_query = Student.objects.filter(branch_id__in=branches, is_active=True)
-    students = []
-
-    for student in base_query:
-        total_paid = student.get_total_paid()
-        remaining = student.get_remaining_amount()
-
-        # لو مدفوع كامل → نتخطاه
-        if remaining <= 0:
-            continue
-
-        if income_type == 'registration':
-            # تسجيل جديد = أول مرة يدفع
-            if total_paid == 0:
-                first_amount = (student.installment_amount
-                                if student.payment_method == 'installment'
-                                else student.total_price)
-
-                students.append({
-                    'id': student.id,
-                    'name': student.full_name,
-                    'branch_name': student.branch.name,  # للأدمن يعرف الفرع
-                    'course_name': student.course.name if student.course else '',
-                    'payment_method': student.payment_method,
-                    'first_amount': float(first_amount),
-                    'total_price': float(student.total_price),
-                    'label': f'{student.full_name} ({student.branch.name}) - {first_amount:,.0f} ر.س' if len(
-                        branches) > 1 else f'{student.full_name} - {first_amount:,.0f} ر.س',
-                    'status': 'new',
-                    'can_pay': True
-                })
-
-        else:  # installment
-            # لازم يكون دفع قبل كده
-            if total_paid == 0:
-                continue
-
-            info = student.get_next_installment_info()
-            can_pay, reason = student.can_pay_installment_now(early_days_allowed=5)
-
-            if info:
-                label = student.full_name
-                if len(branches) > 1:
-                    label += f' ({student.branch.name})'
-
-                if info['status'] == 'overdue':
-                    label += f' - 🔴 قسط {info["installment_number"]} متأخر'
-                elif info['status'] == 'due_today':
-                    label += f' - ⚠️ قسط {info["installment_number"]} اليوم'
-                elif info['status'] == 'due_soon':
-                    label += f' - 🟡 قسط {info["installment_number"]} بعد {info["days_until"]} يوم'
-                else:
-                    label += f' - ⏳ قسط {info["installment_number"]} بعد {info["days_until"]} يوم'
-
-                students.append({
-                    'id': student.id,
-                    'name': student.full_name,
-                    'branch_name': student.branch.name,
-                    'course_name': student.course.name if student.course else '',
-                    'remaining_amount': float(remaining),
-                    'installment_amount': float(student.installment_amount),
-                    'current_installment': info['installment_number'],
-                    'due_date': info['due_date'].strftime('%Y-%m-%d'),
-                    'days_until': info['days_until'],
-                    'status': info['status'],
-                    'can_pay': can_pay,
-                    'label': label,
-                    'message': reason
-                })
-
-    # ترتيب: المتأخرين أولاً
-    status_order = {'overdue': 0, 'due_today': 1, 'due_soon': 2, 'upcoming': 3, 'new': 4}
-    students.sort(key=lambda x: status_order.get(x.get('status'), 99))
-
-    return JsonResponse({'students': students})
+from django.db import transaction
 
 
 @login_required
-def get_student_payment_info(request):
-    """جلب معلومات الدفع للطالب"""
-    student_id = request.GET.get('student_id')
-    income_type = request.GET.get('income_type', 'installment')
+@permission_required('transactions.add_income', raise_exception=True)
+def excel_style_transaction(request):
+    """تسجيل مجموعة حركات مالية بنفس أسلوب ملف الـ Excel"""
+    if request.method == 'POST':
+        print("=" * 50)
+        print("POST Data Received")
+        print("=" * 50)
 
-    student = get_object_or_404(Student, id=student_id)
+        formset = ExcelStyleTransactionFormSet(request.POST, user=request.user)
+        print(f"Total Forms Submitted: {request.POST.get('form-TOTAL_FORMS')}")
 
-    total_paid = student.get_total_paid()
-    remaining = student.get_remaining_amount()
+        if formset.is_valid():
+            print("Formset IS VALID - Processing save...")
+            with transaction.atomic():
+                count = 0
+                for form in formset:
+                    if not form.cleaned_data:
+                        continue
+                    data = form.cleaned_data
+                    branch = data['branch']
+                    tx_type = data['transaction_type']
+                    if tx_type in ('registration', 'registration_fees', 'full_payment', 'full_fees'):
+                        income_type = 'registration'
+                    else:
+                        income_type = 'installment'
 
-    # ✅ بيانات الكورس والسعر
-    course = student.course
-    course_data = {
-        'id': course.id if course else None,
-        'name': course.name if course else 'غير محدد',
-        'price': float(course.price) if course and hasattr(course, 'price') else float(student.total_price),
-    }
+                    payment_method = data.get('payment_method') or 'mada'
 
-    data = {
-        'type': income_type,
-        'student_id': student.id,
-        'student_name': student.full_name,
-        'payment_method': student.payment_method,
+                    extra_notes = []
+                    if data.get('id_number'):
+                        extra_notes.append(f"رقم: {data['id_number']}")
+                    if data.get('registration_date'):
+                        extra_notes.append(f"تاريخ التسجيل: {data['registration_date']}")
+                    if data.get('city'):
+                        extra_notes.append(f"المدينة: {data['city']}")
+                    if data.get('notes'):
+                        extra_notes.append(data['notes'])
+                    full_notes = '\n'.join(extra_notes)
+                    # تحديد المحصل
+                    collected_by = data.get('collected_by') or request.user
+                    collector_name = collected_by.get_full_name() if collected_by else ''
+                    
+                    Income.objects.create(
+                        branch=branch,
+                        date=data['date'],
+                        income_type=income_type,
+                        amount=data['amount'],
+                        payment_method=payment_method,
+                        payment_location='in_person',
+                        collected_by=collected_by,
+                        course=data.get('course'),
+                        party_name=data['party_name'],
+                        collector_name=collector_name,
+                        transaction_number=data.get('transaction_number', ''),
+                        notes=full_notes,
+                    )
+                    count += 1
 
-        # ✅ بيانات الكورس
-        'course': course_data,
-
-        # ✅ بيانات المبالغ
-        'total_price': float(student.total_price),
-        'total_paid': float(total_paid),
-        'remaining_amount': float(remaining),
-
-        # ✅ معلومات الأقساط
-        'installment_count': student.installment_count,
-        'installment_amount': float(student.installment_amount) if student.installment_amount else 0,
-        'paid_installments': student.paid_installments,
-    }
-
-    if income_type == 'registration':
-        # أول دفعة
-        if student.payment_method == 'installment':
-            first_amount = student.installment_amount
-            data['suggested_amount'] = float(first_amount)
-            data['max_allowed'] = float(first_amount)
-            data['amount_label'] = 'أول قسط'
-            data['message'] = f'أول قسط: {first_amount:,.2f} ر.س (من إجمالي {student.total_price:,.2f})'
+                messages.success(
+                    request,
+                    f'تم تسجيل {count} حركة مالية بنجاح!'
+                )
+                return redirect('transactions:excel_style_transaction')
         else:
-            # دفعة كاملة
-            data['suggested_amount'] = float(student.total_price)
-            data['max_allowed'] = float(student.total_price)
-            data['amount_label'] = 'الدفعة الكاملة'
-            data['message'] = f'دفعة كاملة: {student.total_price:,.2f} ر.س'
+            # 🔴 هنا بنطبع كل الأخطاء في الـ Console
+            print("\n" + "❌ FORMSSET NOT VALID!" + "\n")
+            print("Non-form errors:", formset.non_form_errors())
+            print("\n--- Errors per form ---")
+            for i, form in enumerate(formset):
+                if form.errors:
+                    print(f"\nForm [{i}] errors:")
+                    for field, errors in form.errors.items():
+                        print(f"  Field '{field}': {errors}")
+                if form.non_field_errors():
+                    print(f"  Non-field errors: {form.non_field_errors()}")
+            print("\n" + "=" * 50 + "\n")
 
-    else:  # installment
-        info = student.get_next_installment_info()
-        can_pay, reason = student.can_pay_installment_now(early_days_allowed=5)
+            # 🔴 نبعت رسالة للمستخدم في الـ Frontend
+            messages.error(request, 'يوجد أخطاء في البيانات المدخلة، يرجى مراجعة الحقول المطلوبة (باللون الأحمر)')
 
-        data['can_pay'] = can_pay
-        data['message'] = reason
+            # 🔴 دي أهم حاجة - لازم نرجع الـ formset بالأخطاء للـ template
+            return render(request, 'transactions/excel_style_transaction.html', {
+                'formset': formset,
+                'title': 'تسجيل حركات مالية (أسلوب Excel)',
+            })
+    else:
+        formset = ExcelStyleTransactionFormSet(user=request.user)
 
-        if info:
-            data['current_installment'] = {
-                'number': info['installment_number'],
-                'due_date': info['due_date'].strftime('%Y-%m-%d'),
-                'amount': float(info['amount']),
-                'status': info['status'],
-            }
+    return render(request, 'transactions/excel_style_transaction.html', {
+        'formset': formset,
+        'title': 'تسجيل حركات مالية (أسلوب Excel)',
+    })
 
-            if can_pay:
-                data['suggested_amount'] = float(info['amount'])
-                data['max_allowed'] = float(remaining)
-                data['amount_label'] = f'قسط {info["installment_number"]}'
+import os
+import tempfile
+from .forms import ExcelImportForm, ExcelMappingForm
+from .excel_import import parse_excel_preview, import_excel_data, import_excel_expense_data
 
-                # ✅ خيارات الدفع
-                data['options'] = [
-                    {
-                        'type': 'current',
-                        'label': f'قسط {info["installment_number"]}',
-                        'amount': float(info['amount']),
-                        'description': f'المستحق: {info["due_date"]}'
-                    },
-                    {
-                        'type': 'full',
-                        'label': 'تسديد كامل',
-                        'amount': float(remaining),
-                        'description': f'سداد المتبقي كله ({remaining:,.2f})'
-                    }
-                ]
 
-                # لو نظام أقساط، نضيف خيار دفع قسطين
-                if student.payment_method == 'installment' and remaining > info['amount'] * 2:
-                    data['options'].insert(1, {
-                        'type': 'double',
-                        'label': f'قسطين ({info["installment_number"]} و {info["installment_number"] + 1})',
-                        'amount': float(info['amount'] * 2),
-                        'description': 'دفع قسطين مرة واحدة'
+@login_required
+@permission_required('transactions.add_income', raise_exception=True)
+def excel_import(request):
+    """استيراد ملف Excel للإيرادات"""
+    if request.method == 'POST':
+        step = request.POST.get('step', 'upload')
+
+        if step == 'upload':
+            form = ExcelImportForm(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                excel_file = form.cleaned_data['excel_file']
+                branch = form.cleaned_data['branch']
+
+                # حفظ الملف مؤقتاً
+                ext = os.path.splitext(excel_file.name)[1]
+                temp_name = f'excel_import_{request.user.id}_{timezone.now().strftime("%Y%m%d%H%M%S")}{ext}'
+                temp_path = os.path.join(tempfile.gettempdir(), temp_name)
+
+                with open(temp_path, 'wb+') as dest:
+                    for chunk in excel_file.chunks():
+                        dest.write(chunk)
+
+                try:
+                    preview_rows, cols = parse_excel_preview(temp_path)
+                except ValueError as e:
+                    messages.error(request, str(e))
+                    return render(request, 'transactions/excel_import.html', {
+                        'form': form,
+                        'title': 'استيراد من Excel',
                     })
-            else:
-                data['suggested_amount'] = 0
-                data['error'] = True
 
-    return JsonResponse(data)
+                # تقدير افتراضي للـ mapping
+                initial_mapping = {
+                    'party_name': 0,
+                    'payment_method': 1,
+                    'amount': 3,
+                    'date': 4,
+                    'transaction_type': 6,
+                    'city': 7,
+                    'collector_name': 8,
+                    'transaction_number': 9,
+                }
+
+                mapping_form = ExcelMappingForm(initial={
+                    'temp_file': temp_path,
+                    'branch': branch.id,
+                    'step': 'import',
+                    **initial_mapping
+                })
+
+                return render(request, 'transactions/excel_import.html', {
+                    'form': form,
+                    'mapping_form': mapping_form,
+                    'preview_rows': preview_rows,
+                    'title': 'استيراد من Excel - تأكيد الأعمدة',
+                    'step': 'mapping',
+                })
+
+        elif step == 'import':
+            mapping_form = ExcelMappingForm(request.POST)
+            if mapping_form.is_valid():
+                temp_path = mapping_form.cleaned_data['temp_file']
+                branch = mapping_form.cleaned_data['branch']
+                mapping = {
+                    'party_name': mapping_form.cleaned_data.get('party_name'),
+                    'payment_method': mapping_form.cleaned_data.get('payment_method'),
+                    'amount': mapping_form.cleaned_data['amount'],
+                    'date': mapping_form.cleaned_data['date'],
+                    'transaction_type': mapping_form.cleaned_data.get('transaction_type'),
+                    'city': mapping_form.cleaned_data.get('city'),
+                    'collector_name': mapping_form.cleaned_data.get('collector_name'),
+                    'transaction_number': mapping_form.cleaned_data.get('transaction_number'),
+                    'notes': mapping_form.cleaned_data.get('notes'),
+                }
+
+                if not os.path.exists(temp_path):
+                    messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
+                    return redirect('transactions:excel_import')
+
+                try:
+                    imported, errors = import_excel_data(temp_path, mapping, branch, request.user)
+                    if imported > 0:
+                        messages.success(request, f'تم استيراد {imported} حركة مالية بنجاح!')
+                    if errors:
+                        for err in errors:
+                            messages.warning(request, err)
+                except Exception as e:
+                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                finally:
+                    # مسح الملف المؤقت
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+
+                return redirect('transactions:income_list')
+    else:
+        form = ExcelImportForm(user=request.user)
+
+    return render(request, 'transactions/excel_import.html', {
+        'form': form,
+        'title': 'استيراد من Excel',
+        'step': 'upload',
+    })
+
+
+@login_required
+@permission_required('transactions.add_expense', raise_exception=True)
+def excel_style_expense(request):
+    """تسجيل مجموعة مصروفات بنفس أسلوب ملف الـ Excel"""
+    if request.method == 'POST':
+        formset = ExcelStyleExpenseFormSet(request.POST, user=request.user)
+        if formset.is_valid():
+            with transaction.atomic():
+                count = 0
+                for form in formset:
+                    if not form.cleaned_data:
+                        continue
+                    data = form.cleaned_data
+                    Expense.objects.create(
+                        branch=data['branch'],
+                        date=data['date'],
+                        category=data['category'],
+                        description=data['description'],
+                        amount=data['amount'],
+                        receipt_number=data.get('receipt_number', ''),
+                        notes=data.get('notes', ''),
+                        created_by=request.user,
+                    )
+                    count += 1
+
+                messages.success(
+                    request,
+                    f'تم تسجيل {count} مصروف بنجاح!'
+                )
+                return redirect('transactions:excel_style_expense')
+    else:
+        formset = ExcelStyleExpenseFormSet(user=request.user)
+
+    return render(request, 'transactions/excel_style_expense.html', {
+        'formset': formset,
+        'title': 'تسجيل مصروفات (أسلوب Excel)',
+    })
+
+
+@login_required
+@permission_required('transactions.add_expense', raise_exception=True)
+def excel_import_expense(request):
+    """استيراد ملف Excel للمصروفات"""
+    if request.method == 'POST':
+        step = request.POST.get('step', 'upload')
+
+        if step == 'upload':
+            form = ExcelExpenseImportForm(request.POST, request.FILES, user=request.user)
+            if form.is_valid():
+                excel_file = form.cleaned_data['excel_file']
+                branch = form.cleaned_data['branch']
+
+                ext = os.path.splitext(excel_file.name)[1]
+                temp_name = f'excel_expense_import_{request.user.id}_{timezone.now().strftime("%Y%m%d%H%M%S")}{ext}'
+                temp_path = os.path.join(tempfile.gettempdir(), temp_name)
+
+                with open(temp_path, 'wb+') as dest:
+                    for chunk in excel_file.chunks():
+                        dest.write(chunk)
+
+                try:
+                    preview_rows, cols = parse_excel_preview(temp_path)
+                except ValueError as e:
+                    messages.error(request, str(e))
+                    return render(request, 'transactions/excel_import_expense.html', {
+                        'form': form,
+                        'title': 'استيراد مصروفات من Excel',
+                    })
+
+                initial_mapping = {
+                    'description': 0,
+                    'category': 1,
+                    'amount': 3,
+                    'date': 4,
+                    'receipt_number': 5,
+                    'notes': 6,
+                }
+
+                mapping_form = ExcelExpenseMappingForm(initial={
+                    'temp_file': temp_path,
+                    'branch': branch.id,
+                    'step': 'import',
+                    **initial_mapping
+                })
+
+                return render(request, 'transactions/excel_import_expense.html', {
+                    'form': form,
+                    'mapping_form': mapping_form,
+                    'preview_rows': preview_rows,
+                    'title': 'استيراد مصروفات من Excel - تأكيد الأعمدة',
+                    'step': 'mapping',
+                })
+
+        elif step == 'import':
+            mapping_form = ExcelExpenseMappingForm(request.POST)
+            if mapping_form.is_valid():
+                temp_path = mapping_form.cleaned_data['temp_file']
+                branch = mapping_form.cleaned_data['branch']
+                mapping = {
+                    'description': mapping_form.cleaned_data.get('description'),
+                    'category': mapping_form.cleaned_data.get('category'),
+                    'amount': mapping_form.cleaned_data['amount'],
+                    'date': mapping_form.cleaned_data['date'],
+                    'receipt_number': mapping_form.cleaned_data.get('receipt_number'),
+                    'notes': mapping_form.cleaned_data.get('notes'),
+                }
+
+                if not os.path.exists(temp_path):
+                    messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
+                    return redirect('transactions:excel_import_expense')
+
+                try:
+                    imported, errors = import_excel_expense_data(temp_path, mapping, branch, request.user)
+                    if imported > 0:
+                        messages.success(request, f'تم استيراد {imported} مصروف بنجاح!')
+                    if errors:
+                        for err in errors:
+                            messages.warning(request, err)
+                except Exception as e:
+                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                finally:
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+
+                return redirect('transactions:expense_list')
+    else:
+        form = ExcelExpenseImportForm(user=request.user)
+
+    return render(request, 'transactions/excel_import_expense.html', {
+        'form': form,
+        'title': 'استيراد مصروفات من Excel',
+        'step': 'upload',
+    })

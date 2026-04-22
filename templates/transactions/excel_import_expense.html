@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-file-excel text-danger"></i> {{ title }}</h2>
+    <a href="{% url 'transactions:expense_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع
+    </a>
+</div>
+
+{% if step == 'upload' %}
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">الخطوة 1: رفع ملف Excel</h5>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="step" value="upload">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.excel_file.id_for_label }}" class="form-label">ملف Excel</label>
+                        {{ form.excel_file }}
+                        <small class="form-text text-muted">صيغة .xlsx أو .xls</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="mb-3">
+                        <label for="{{ form.branch.id_for_label }}" class="form-label">الفرع</label>
+                        {{ form.branch }}
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-eye"></i> عرض المعاينة
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info mt-3">
+    <h6><i class="fas fa-info-circle"></i> تعليمات</h6>
+    <ul class="mb-0">
+        <li>الملف يجب أن يكون بصيغة Excel (.xlsx أو .xls)</li>
+        <li>الصفوف يجب أن تكون بدون عنوان (header)</li>
+        <li>التواريخ بصيغة يوم/شهر/سنة مثال: 20/04/2026</li>
+        <li>الفئات المعروفة: رواتب، إيجار، مرافق، مستلزمات، تسويق، صيانة، أخرى</li>
+    </ul>
+</div>
+{% endif %}
+
+{% if step == 'mapping' %}
+<div class="card mb-3">
+    <div class="card-header bg-primary text-white">
+        <i class="fas fa-table"></i> معاينة أول 10 صفوف
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        {% for col in preview_rows.0 %}
+                        <th>عمود {{ forloop.counter0 }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in preview_rows %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        {% for cell in row %}
+                        <td>{{ cell }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">الخطوة 2: ربط الأعمدة</h5>
+        <form method="post">
+            {% csrf_token %}
+            {{ mapping_form.step }}
+            {{ mapping_form.temp_file }}
+            {{ mapping_form.branch }}
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.description.label }} *</label>
+                        {{ mapping_form.description }}
+                        <small class="text-muted">رقم العمود (يبدأ من 0)</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.amount.label }} *</label>
+                        {{ mapping_form.amount }}
+                        <small class="text-muted">رقم العمود</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.date.label }} *</label>
+                        {{ mapping_form.date }}
+                        <small class="text-muted">رقم العمود</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.category.label }}</label>
+                        {{ mapping_form.category }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.receipt_number.label }}</label>
+                        {{ mapping_form.receipt_number }}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label>{{ mapping_form.notes.label }}</label>
+                        {{ mapping_form.notes }}
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-upload"></i> استيراد البيانات
+            </button>
+            <a href="{% url 'transactions:excel_import_expense' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-redo"></i> إعادة رفع
+            </a>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

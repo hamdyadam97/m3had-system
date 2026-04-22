@@ -7,14 +7,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('students', '0005_enrollment'),
         ('transactions', '0004_income_installment'),
     ]
 
-    operations = [
-        migrations.AddField(
-            model_name='income',
-            name='enrollment',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='payments', to='students.enrollment', verbose_name='التسجيل'),
-        ),
-    ]
+    operations = []

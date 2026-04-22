@@ -11,7 +11,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('branches', '0001_initial'),
-        ('courses', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -30,7 +29,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')),
                 ('updated_at', models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث')),
                 ('branch', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='branches.branch', verbose_name='الفرع')),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='courses.course', verbose_name='الدورة/الدبلومة')),
+
             ],
             options={
                 'verbose_name': 'تقرير دورة',

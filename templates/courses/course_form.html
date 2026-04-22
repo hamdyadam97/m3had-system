@@ -8,54 +8,134 @@
                 <h5 class="mb-0">{{ title }}</h5>
             </div>
             <div class="card-body p-4">
+
+                <!-- 🔴 رسائل Django Messages -->
+                {% if messages %}
+                <div class="messages mb-3">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- 🔴 أخطاء عامة للفورم -->
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                    <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
                 <form method="post" novalidate>
                     {% csrf_token %}
                     <div class="row g-3">
+
+                        <!-- اسم الدورة -->
                         <div class="col-md-8">
-                            <label class="form-label fw-bold">اسم الدورة/الدبلومة</label>
+                            <label class="form-label fw-bold">اسم الدورة/الدبلومة *</label>
                             {{ form.name }}
+                            {% if form.name.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.name.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- كود الدورة -->
                         <div class="col-md-4">
                             <label class="form-label fw-bold">كود الدورة</label>
                             {{ form.code }}
+                            {% if form.code.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.code.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- النوع -->
                         <div class="col-md-6">
-                            <label class="form-label fw-bold">النوع</label>
+                            <label class="form-label fw-bold">النوع *</label>
                             {{ form.course_type }}
+                            {% if form.course_type.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.course_type.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- السعر -->
                         <div class="col-md-3">
-                            <label class="form-label fw-bold">السعر</label>
+                            <label class="form-label fw-bold">السعر *</label>
                             {{ form.price }}
+                            {% if form.price.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.price.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- المدة -->
                         <div class="col-md-3">
                             <label class="form-label fw-bold">المدة (أيام)</label>
                             {{ form.duration_days }}
+                            {% if form.duration_days.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.duration_days.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- الوصف -->
                         <div class="col-12">
                             <label class="form-label fw-bold">الوصف</label>
                             {{ form.description }}
+                            {% if form.description.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.description.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- الفروع -->
                         <div class="col-12">
                             <label class="form-label fw-bold text-primary">الفروع المتاحة (استخدم Ctrl للاختيار المتعدد)</label>
                             {{ form.branches }}
+                            {% if form.branches.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.branches.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
+
+                        <!-- الحالة -->
                         <div class="col-12">
                             <div class="form-check form-switch mt-2">
                                 {{ form.is_active }}
                                 <label class="form-check-label fw-bold">الحالة نشطة</label>
                             </div>
+                            {% if form.is_active.errors %}
+                            <div class="text-danger small">
+                                {% for error in form.is_active.errors %}{{ error }}{% endfor %}
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    <hr class="my-4">
-                   <div class="d-flex justify-content-between">
-        <button type="submit" class="btn btn-primary px-5">حفظ البيانات</button>
 
-        {% if course %}
-            <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-light">إلغاء</a>
-        {% else %}
-            <a href="{% url 'courses:course_list' %}" class="btn btn-light">إلغاء</a>
-        {% endif %}
-    </div>
+                    <hr class="my-4">
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary px-5">حفظ البيانات</button>
+
+                        {% if course %}
+                            <a href="{% url 'courses:course_detail' course.pk %}" class="btn btn-light">إلغاء</a>
+                        {% else %}
+                            <a href="{% url 'courses:course_list' %}" class="btn btn-light">إلغاء</a>
+                        {% endif %}
+                    </div>
                 </form>
             </div>
         </div>

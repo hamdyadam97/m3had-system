@@ -110,8 +110,8 @@
             {% if type == 'income' %}
                 <tr>
                     <th style="width: 5%;">#</th>
-                    <th>الطالب</th>
-                    <th>الدورة</th>
+                    <th>الطرف</th>
+                    <th>ملاحظات</th>
                     <th>النوع</th>
                     <th>طريقة الدفع</th>
                     <th>المبلغ</th>
@@ -150,8 +150,8 @@
                 {% for item in data %}
                 <tr>
                     <td>{{ forloop.counter }}</td>
-                    <td>{{ item.student.full_name }}</td>
-                    <td>{{ item.course.name }}</td>
+                    <td>{{ item.party_name|default:"غير محدد" }}</td>
+                    <td>{{ item.notes|truncatechars:20|default:"-" }}</td>
                     <td>{{ item.get_income_type_display }}</td>
                     <td>{{ item.get_payment_method_display }}</td>
                     <td class="amount-cell">{{ item.amount }}</td>
@@ -180,6 +180,7 @@
                 </tr>
                 {% endfor %}
 
+            <!--
             {% elif type == 'courses' %}
                 {% for item in courses_data %}
                 <tr>
@@ -192,6 +193,7 @@
                 </tr>
 
                 {% endfor %}
+            -->
         </tbody>
         {% elif type == 'branches_report' %}
         <tr>

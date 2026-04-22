@@ -271,8 +271,8 @@
                 <thead>
                     <tr>
                         <th>التاريخ</th>
-                        <th>الطالب</th>
-                        <th>الدورة</th>
+                        <th>الطرف</th>
+                        <th>ملاحظات</th>
                         <th>النوع</th>
                         <th>الفرع</th>
                         <th>المبلغ</th>
@@ -282,8 +282,8 @@
                     {% for transaction in recent_transactions %}
                     <tr>
                         <td>{{ transaction.date|date:"Y-m-d" }}</td>
-                        <td>{{ transaction.student.full_name }}</td>
-                        <td>{{ transaction.course.name }}</td>
+                        <td>{{ transaction.party_name|default:"غير محدد" }}</td>
+                        <td>{{ transaction.notes|truncatechars:20|default:"-" }}</td>
                         <td>
                             {% if transaction.income_type == 'registration' %}
                             <span class="badge bg-success">تسجيل جديد</span>

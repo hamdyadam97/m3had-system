@@ -4,9 +4,9 @@ from .models import Income, Expense, DailySummary
 
 @admin.register(Income)
 class IncomeAdmin(admin.ModelAdmin):
-    list_display = ['date', 'branch', 'student', 'income_type', 'amount', 'payment_method', 'payment_location', 'collected_by']
+    list_display = ['date', 'branch', 'party_name', 'income_type', 'amount', 'payment_method', 'payment_location', 'collected_by']
     list_filter = ['branch', 'income_type', 'payment_method', 'payment_location', 'date']
-    search_fields = ['student__full_name', 'notes']
+    search_fields = ['party_name', 'notes']
     date_hierarchy = 'date'
     
     def get_queryset(self, request):

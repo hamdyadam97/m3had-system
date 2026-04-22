@@ -73,7 +73,7 @@
                     <div class="progress shadow-sm" style="height: 25px;">
                         <div class="progress-bar progress-bar-striped progress-bar-animated {% if achievement_percentage >= 100 %}bg-success{% else %}bg-info{% endif %}"
                              role="progressbar"
-                             style="width: {{ achievement_percentage }}%">
+                             style="width: {% if achievement_percentage > 100 %}100{% else %}{{ achievement_percentage }}{% endif %}%">
                             {{ achievement_percentage }}%
                         </div>
                     </div>
@@ -81,6 +81,7 @@
             </div>
         </div>
 
+        <!--
         <div class="card shadow-sm border-0">
             <div class="card-header bg-white py-3">
                 <h5 class="mb-0 text-dark"><i class="fas fa-award me-2"></i> أفضل 5 دورات في هذا الفرع</h5>
@@ -110,6 +111,7 @@
                 </table>
             </div>
         </div>
+        -->
     </div>
 
     <div class="col-md-4">
@@ -117,13 +119,11 @@
             <div class="card-body">
                 <h5 class="card-title mb-4">إجراءات سريعة لهذا الفرع</h5>
                 <div class="d-grid gap-2">
-                    <a href="{% url 'transactions:income_add' %}?branch={{ branch.id }}" class="btn btn-primary text-start">
-                        <i class="fas fa-plus-circle me-2"></i> إضافة إيراد للفرع
-                    </a>
+                   
                     <a href="{% url 'transactions:expense_add' %}?branch={{ branch.id }}" class="btn btn-warning text-white text-start">
                         <i class="fas fa-minus-circle me-2"></i> إضافة مصروف للفرع
                     </a>
-                    <a href="{% url 'students:student_add' %}?branch={{ branch.id }}" class="btn btn-success text-start">
+                    <a href="{% url 'transactions:excel_style_transaction' %}?branch={{ branch.id }}"  class="btn btn-success text-start">
                         <i class="fas fa-user-plus me-2"></i> إضافة طالب للفرع
                     </a>
                     <hr>

@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-table text-danger"></i> {{ title }}</h2>
+    <a href="{% url 'transactions:expense_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع للمصروفات
+    </a>
+</div>
+
+<div class="card border-danger">
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-edit"></i> تسجيل مجموعة مصروفات</span>
+        <button type="button" class="btn btn-light btn-sm" onclick="addRow()">
+            <i class="fas fa-plus"></i> إضافة صف جديد
+        </button>
+    </div>
+    <div class="card-body">
+        <form method="post" id="excelExpenseForm" autocomplete="off">
+            {% csrf_token %}
+            {{ formset.management_form }}
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle" id="expense-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;">#</th>
+                            <th>الوصف *</th>
+                            <th>الفئة *</th>
+                            <th>المبلغ *</th>
+                            <th>التاريخ *</th>
+                            <th>الفرع *</th>
+                            <th>رقم الإيصال</th>
+                            <th>ملاحظات</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in formset.forms %}
+                        <tr class="form-row">
+                            <td class="row-num">{{ forloop.counter }}</td>
+                            <td>{{ form.description }}</td>
+                            <td>{{ form.category }}</td>
+                            <td>{{ form.amount }}</td>
+                            <td>{{ form.date }}</td>
+                            <td>{{ form.branch }}</td>
+                            <td>{{ form.receipt_number }}</td>
+                            <td>{{ form.notes }}</td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-row" onclick="removeRow(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if formset.non_form_errors %}
+            <div class="alert alert-danger mt-3">
+                {{ formset.non_form_errors }}
+            </div>
+            {% endif %}
+
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-danger btn-lg px-5">
+                    <i class="fas fa-save"></i> حفظ الكل
+                </button>
+                <button type="reset" class="btn btn-outline-secondary btn-lg px-4 ms-2" onclick="resetForm()">
+                    <i class="fas fa-eraser"></i> تفريغ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        if (!input.value) input.value = today;
+    });
+
+    document.getElementById('excelExpenseForm').addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            this.submit();
+        }
+    });
+
+    updateRowNumbers();
+});
+
+function getTotalForms() {
+    return document.getElementById('id_form-TOTAL_FORMS');
+}
+
+function updateRowNumbers() {
+    document.querySelectorAll('#expense-table tbody tr').forEach(function(row, index) {
+        row.querySelector('.row-num').textContent = index + 1;
+    });
+}
+
+function updateElementIndex(element, prefix, ndx) {
+    const idRegex = new RegExp('(' + prefix + '-\\d+)');
+    const replacement = prefix + '-' + ndx;
+    if (element.id) element.id = element.id.replace(idRegex, replacement);
+    if (element.name) element.name = element.name.replace(idRegex, replacement);
+    if (element.getAttribute('for')) element.setAttribute('for', element.getAttribute('for').replace(idRegex, replacement));
+}
+
+function addRow() {
+    const tableBody = document.querySelector('#expense-table tbody');
+    const totalForms = getTotalForms();
+    const rowCount = parseInt(totalForms.value);
+    const firstRow = tableBody.querySelector('tr');
+
+    if (!firstRow) return;
+
+    const newRow = firstRow.cloneNode(true);
+
+    newRow.querySelectorAll('input, select, textarea').forEach(function(input) {
+        input.value = '';
+        if (input.type === 'date') {
+            input.value = new Date().toISOString().split('T')[0];
+        }
+        updateElementIndex(input, 'form', rowCount);
+    });
+
+    newRow.querySelectorAll('.invalid-feedback').forEach(function(el) {
+        el.remove();
+    });
+    newRow.querySelectorAll('.is-invalid').forEach(function(el) {
+        el.classList.remove('is-invalid');
+    });
+
+    tableBody.appendChild(newRow);
+    totalForms.value = rowCount + 1;
+    updateRowNumbers();
+
+    const firstInput = newRow.querySelector('input');
+    if (firstInput) firstInput.focus();
+}
+
+function removeRow(button) {
+    const tableBody = document.querySelector('#expense-table tbody');
+    const rows = tableBody.querySelectorAll('tr');
+
+    if (rows.length <= 1) {
+        const row = button.closest('tr');
+        row.querySelectorAll('input, textarea').forEach(function(input) {
+            input.value = '';
+            if (input.type === 'date') {
+                input.value = new Date().toISOString().split('T')[0];
+            }
+        });
+        row.querySelectorAll('select').forEach(function(select) {
+            select.selectedIndex = 0;
+        });
+        return;
+    }
+
+    const row = button.closest('tr');
+    row.remove();
+
+    const totalForms = getTotalForms();
+    const remainingRows = tableBody.querySelectorAll('tr');
+    totalForms.value = remainingRows.length;
+
+    remainingRows.forEach(function(row, index) {
+        row.querySelectorAll('input, select, textarea, label').forEach(function(element) {
+            updateElementIndex(element, 'form', index);
+        });
+    });
+
+    updateRowNumbers();
+}
+
+function resetForm() {
+    const tableBody = document.querySelector('#expense-table tbody');
+    const rows = tableBody.querySelectorAll('tr');
+
+    rows.forEach(function(row, index) {
+        if (index === 0) {
+            row.querySelectorAll('input, textarea').forEach(function(input) {
+                input.value = '';
+                if (input.type === 'date') {
+                    input.value = new Date().toISOString().split('T')[0];
+                }
+            });
+            row.querySelectorAll('select').forEach(function(select) {
+                select.selectedIndex = 0;
+            });
+        } else {
+            row.remove();
+        }
+    });
+
+    getTotalForms().value = 1;
+    updateRowNumbers();
+}
+</script>
+{% endblock %}

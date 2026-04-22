@@ -1,6 +1,5 @@
 from django.db import models
 from branches.models import Branch
-from courses.models import Course
 
 
 class MonthlyReport(models.Model):
@@ -42,36 +41,6 @@ class MonthlyReport(models.Model):
     
     def __str__(self):
         return f"{self.branch.name} - {self.month}/{self.year}"
-
-
-class CourseReport(models.Model):
-    """تقرير تفصيلي لكل دورة"""
-    branch = models.ForeignKey(Branch, on_delete=models.CASCADE, verbose_name='الفرع')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, verbose_name='الدورة/الدبلومة')
-    date = models.DateField(verbose_name='التاريخ')
-    
-    # الإحصائيات اليومية
-    daily_registrations = models.PositiveIntegerField(default=0, verbose_name='التسجيلات اليومية')
-    daily_income = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='الإيراد اليومي')
-    
-    # الإحصائيات الشهرية
-    monthly_registrations = models.PositiveIntegerField(default=0, verbose_name='التسجيلات الشهرية')
-    monthly_income = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='الإيراد الشهري')
-    
-    # الإحصائيات الإجمالية
-    total_registrations = models.PositiveIntegerField(default=0, verbose_name='إجمالي التسجيلات')
-    total_income = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name='إجمالي الإيرادات')
-    
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='تاريخ التحديث')
-    
-    class Meta:
-        verbose_name = 'تقرير دورة'
-        verbose_name_plural = 'تقارير الدورات'
-        ordering = ['-date']
-    
-    def __str__(self):
-        return f"{self.course.name} - {self.branch.name} - {self.date}"
 
 
 class EmployeeReport(models.Model):

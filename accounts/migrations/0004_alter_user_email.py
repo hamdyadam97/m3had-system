@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('accounts', '0003_notification'),
+        ('accounts', '0002_user_managed_branches_alter_user_user_type'),
     ]
 
     operations = [

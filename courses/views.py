@@ -35,7 +35,8 @@ def course_list(request):
     page_number = request.GET.get('page')
     courses = paginator.get_page(page_number)
 
-    return render(request, 'courses/course_list.html', {'courses': courses})
+    form = CourseForm()
+    return render(request, 'courses/course_list.html', {'courses': courses, 'form': form})
 
 
 @login_required
@@ -45,28 +46,23 @@ def course_detail(request, pk):
     user = request.user
     course = get_object_or_404(Course, pk=pk)
 
-    from students.models import Student
     from transactions.models import Income
 
     # تحديد نطاق البيانات (هل يرى إحصائيات الفرع أم الكل؟)
     if user.is_superuser or user.user_type == 'admin':
-        students_queryset = Student.objects.filter(course=course)
         income_queryset = Income.objects.filter(course=course)
     elif user.user_type == 'regional_manager':
         branches = user.managed_branches.all()
-        students_queryset = Student.objects.filter(course=course, branch__in=branches)
         income_queryset = Income.objects.filter(course=course, branch__in=branches)
     else:
-        students_queryset = Student.objects.filter(course=course, branch=user.branch)
         income_queryset = Income.objects.filter(course=course, branch=user.branch)
 
     # حساب الإحصائيات
-    students_count = students_queryset.count()
     total_income = income_queryset.aggregate(total=Sum('amount'))['total'] or 0
 
     context = {
         'course': course,
-        'students_count': students_count,
+        'students_count': '',
         'total_income': total_income,
     }
 
@@ -77,19 +73,38 @@ def course_detail(request, pk):
 @permission_required('courses.add_course', raise_exception=True)
 def course_create(request):
     """إضافة دورة جديدة"""
+    course = None  # 🔴 مهم: نعرف course = None في الأول
+
     if request.method == 'POST':
         form = CourseForm(request.POST)
         if form.is_valid():
-            course = form.save()
-            # إذا كان موظف فرع، نربط الدورة بفرعه تلقائياً لو الموديل يدعم ذلك
+            course = form.save(commit=False)  # 🔴 commit=False الأول
+
+            # لو عندك created_by في الموديل
+            # course.created_by = request.user
+
+            course.save()  # 🔴 نحفظ الأول عشان نقدر نضيف M2M
+            form.save_m2m()  # 🔴 نحفظ العلاقات Many-to-Many (branches)
+
+            # إذا كان موظف فرع، نربط الدورة بفرعه تلقائياً
             if not request.user.is_admin() and request.user.branch:
                 course.branches.add(request.user.branch)
 
             messages.success(request, 'تم إنشاء الدورة بنجاح.')
             return redirect('courses:course_list')
+        else:
+            # 🔴 نطبع الأخطاء في الـ Console
+            print("❌ Form errors:", form.errors)
+            print("❌ Non-field errors:", form.non_field_errors())
+            messages.error(request, 'يوجد أخطاء في البيانات المدخلة.')
     else:
         form = CourseForm()
-    return render(request, 'courses/course_form.html', {'form': form, 'title': 'إضافة دورة جديدة'})
+
+    return render(request, 'courses/course_form.html', {
+        'form': form,
+        'course': course,  # 🔴 هنا course = None لو GET، أو = course لو POST success (بس هنا بيرجع redirect)
+        'title': 'إضافة دورة جديدة'
+    })
 
 
 @login_required

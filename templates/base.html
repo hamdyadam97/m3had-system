@@ -83,18 +83,7 @@
     .stat-card.warning { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important; }
     .stat-card.info { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%) !important; }
     
-    /* تنسيقات الإشعارات */
-    .notifications-dropdown .notification-item {
-        transition: background-color 0.2s;
-    }
-    .notifications-dropdown .notification-item:hover {
-        background-color: #f8f9fa;
-    }
-    .notifications-dropdown .notification-item.unread {
-        background-color: #e3f2fd;
-        border-right: 3px solid #2196f3;
-    }
-    .icon-circle {
+.icon-circle {
         height: 2.5rem;
         width: 2.5rem;
         border-radius: 50%;
@@ -102,17 +91,8 @@
         align-items: center;
         justify-content: center;
     }
-    .bg-income { background-color: #28a745 !important; }
-    .bg-expense { background-color: #dc3545 !important; }
-    .bg-installment { background-color: #17a2b8 !important; }
-    .bg-registration { background-color: #007bff !important; }
-    .bg-system { background-color: #ffc107 !important; }
     
-    #notification-badge {
-        font-size: 0.65rem;
-        padding: 0.25em 0.5em;
-    }
-    
+
     /* Toast Notifications */
     .toast-container {
         position: fixed;
@@ -234,58 +214,6 @@
                 </ul>
 
                 <ul class="navbar-nav align-items-center">
-                    <!-- زر الإشعارات -->
-                    <li class="nav-item dropdown me-3">
-                        <a class="nav-link position-relative" href="#" id="notificationsDropdown" data-bs-toggle="dropdown">
-                            <i class="fas fa-bell fa-lg"></i>
-                            <span id="notification-badge" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger {% if unread_notifications_count == 0 %}d-none{% endif %}">
-                                {{ unread_notifications_count }}
-                            </span>
-                        </a>
-                        <div class="dropdown-menu dropdown-menu-end shadow notifications-dropdown" style="width: 350px; max-height: 400px; overflow-y: auto;">
-                            <div class="dropdown-header d-flex justify-content-between align-items-center p-3 border-bottom">
-                                <h6 class="mb-0">الإشعارات</h6>
-                                {% if unread_notifications_count > 0 %}
-                                <button class="btn btn-sm btn-link text-decoration-none" onclick="markAllNotificationsRead()">
-                                    تحديد الكل كمقروء
-                                </button>
-                                {% endif %}
-                            </div>
-                            <div id="notifications-list">
-                                {% if unread_notifications %}
-                                    {% for notif in unread_notifications %}
-                                    <a href="{% if notif.related_income %}{% url 'transactions:income_detail' notif.related_income.id %}{% else %}#{% endif %}" 
-                                       class="dropdown-item notification-item p-3 border-bottom" 
-                                       data-notification-id="{{ notif.id }}">
-                                        <div class="d-flex align-items-start">
-                                            <div class="flex-shrink-0">
-                                                <div class="icon-circle bg-{{ notif.notification_type|default:'primary' }}">
-                                                    <i class="fas {{ notif.get_notification_icon|default:'fa-bell' }} text-white"></i>
-                                                </div>
-                                            </div>
-                                            <div class="flex-grow-1 ms-3">
-                                                <div class="small text-gray-500">{{ notif.created_at|timesince }}</div>
-                                                <span class="font-weight-bold">{{ notif.title }}</span>
-                                                <p class="mb-0 small text-muted">{{ notif.message|truncatechars:50 }}</p>
-                                            </div>
-                                        </div>
-                                    </a>
-                                    {% endfor %}
-                                {% else %}
-                                    <div class="dropdown-item text-center py-4 text-muted">
-                                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
-                                        <p class="mb-0">لا توجد إشعارات جديدة</p>
-                                    </div>
-                                {% endif %}
-                            </div>
-                            <div class="dropdown-footer text-center p-2 border-top">
-                                <a href="{% url 'accounts:notifications_list' %}" class="text-decoration-none small">
-                                    عرض كل الإشعارات
-                                </a>
-                            </div>
-                        </div>
-                    </li>
-                    
                     <!-- قائمة المستخدم -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
@@ -322,14 +250,6 @@
                             <i class="fas fa-tachometer-alt"></i> لوحة التحكم
                         </a>
 
-                        <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">الإدارة التعليمية</div>
-                        <a class="nav-link {% if 'students' in request.path %}active{% endif %}" href="{% url 'students:student_list' %}">
-                            <i class="fas fa-user-graduate"></i> الطلاب
-                        </a>
-                        <a class="nav-link {% if 'courses' in request.path %}active{% endif %}" href="{% url 'courses:course_list' %}">
-                            <i class="fas fa-book-open"></i> الدورات
-                        </a>
-
                         <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">المالية والتقارير</div>
                         <a class="nav-link {% if 'transactions' in request.path %}active{% endif %}" href="{% url 'transactions:income_list' %}">
                             <i class="fas fa-file-invoice-dollar"></i> السندات المالية
@@ -338,7 +258,6 @@
                             <i class="fas fa-chart-pie"></i> التقارير
                         </a>
 
-                        {% if user.is_superuser or user.user_type == 'admin' %}
                         <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">إعدادات النظام</div>
                         <a class="nav-link {% if 'branches' in request.path %}active{% endif %}" href="{% url 'branches:branch_list' %}">
                             <i class="fas fa-map-marked-alt"></i> الفروع
@@ -346,7 +265,9 @@
                         <a class="nav-link {% if 'accounts' in request.path %}active{% endif %}" href="{% url 'accounts:user_list' %}">
                             <i class="fas fa-user-shield"></i> طاقم العمل
                         </a>
-                        {% endif %}
+                        <a class="nav-link {% if 'courses' in request.path %}active{% endif %}" href="{% url 'courses:course_list' %}">
+                            <i class="fas fa-graduation-cap"></i> الدورات
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -627,148 +548,6 @@
             ToastSystem.info(message, duration);
         };
     </script>
-    
-    {% if user.is_authenticated %}
-    <!-- JavaScript للإشعارات -->
-    <script>
-        // تحديث الإشعارات كل 30 ثانية
-        const NOTIFICATION_UPDATE_INTERVAL = 30000;
-        
-        function updateNotifications() {
-            fetch('{% url "accounts:get_notifications" %}')
-                .then(response => response.json())
-                .then(data => {
-                    updateNotificationBadge(data.unread_count);
-                    updateNotificationsList(data.notifications);
-                })
-                .catch(error => console.error('Error fetching notifications:', error));
-        }
-        
-        function updateNotificationBadge(count) {
-            const badge = document.getElementById('notification-badge');
-            if (count > 0) {
-                badge.textContent = count > 99 ? '99+' : count;
-                badge.classList.remove('d-none');
-            } else {
-                badge.classList.add('d-none');
-            }
-        }
-        
-        function updateNotificationsList(notifications) {
-            const listContainer = document.getElementById('notifications-list');
-            
-            if (notifications.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="dropdown-item text-center py-4 text-muted">
-                        <i class="fas fa-bell-slash fa-2x mb-2"></i>
-                        <p class="mb-0">لا توجد إشعارات جديدة</p>
-                    </div>
-                `;
-                return;
-            }
-            
-            let html = '';
-            notifications.forEach(notif => {
-                html += `
-                    <a href="${notif.link}" 
-                       class="dropdown-item notification-item p-3 border-bottom unread" 
-                       data-notification-id="${notif.id}"
-                       onclick="markNotificationRead(${notif.id}, this)">
-                        <div class="d-flex align-items-start">
-                            <div class="flex-shrink-0">
-                                <div class="icon-circle bg-${notif.type}">
-                                    <i class="fas ${notif.icon} text-white"></i>
-                                </div>
-                            </div>
-                            <div class="flex-grow-1 ms-3">
-                                <div class="small text-gray-500">${notif.time_ago}</div>
-                                <span class="font-weight-bold">${notif.title}</span>
-                                <p class="mb-0 small text-muted">${notif.message.substring(0, 50)}...</p>
-                            </div>
-                        </div>
-                    </a>
-                `;
-            });
-            
-            listContainer.innerHTML = html;
-        }
-        
-        function markNotificationRead(notificationId, element) {
-            event.preventDefault();
-            
-            fetch(`/accounts/notifications/${notificationId}/mark-read/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    element.classList.remove('unread');
-                    element.style.opacity = '0.7';
-                    
-                    // تحديث العدد
-                    const badge = document.getElementById('notification-badge');
-                    const currentCount = parseInt(badge.textContent) || 0;
-                    if (currentCount > 1) {
-                        badge.textContent = currentCount - 1;
-                    } else {
-                        badge.classList.add('d-none');
-                    }
-                    
-                    // الانتقال للرابط
-                    window.location.href = element.getAttribute('href');
-                }
-            });
-        }
-        
-        function markAllNotificationsRead() {
-            fetch('{% url "accounts:mark_all_notifications_read" %}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCookie('csrftoken'),
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('notification-badge').classList.add('d-none');
-                    document.getElementById('notifications-list').innerHTML = `
-                        <div class="dropdown-item text-center py-4 text-muted">
-                            <i class="fas fa-check-circle fa-2x mb-2 text-success"></i>
-                            <p class="mb-0">تم تحديد كل الإشعارات كمقروءة</p>
-                        </div>
-                    `;
-                }
-            });
-        }
-        
-        // دالة لجلب CSRF Token
-        function getCookie(name) {
-            let cookieValue = null;
-            if (document.cookie && document.cookie !== '') {
-                const cookies = document.cookie.split(';');
-                for (let i = 0; i < cookies.length; i++) {
-                    const cookie = cookies[i].trim();
-                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                        break;
-                    }
-                }
-            }
-            return cookieValue;
-        }
-        
-        // بدء التحديث التلقائي
-        document.addEventListener('DOMContentLoaded', function() {
-            updateNotifications();
-            setInterval(updateNotifications, NOTIFICATION_UPDATE_INTERVAL);
-        });
-    </script>
-    {% endif %}
     
     {% block extra_js %}{% endblock %}
 </body>

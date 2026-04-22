@@ -26,8 +26,6 @@ except ImportError:
     HTML = None
 
 from branches.models import Branch, BranchTarget
-from courses.models import Course
-from students.models import Student
 from transactions.models import Income, Expense
 from accounts.models import User
 
@@ -82,9 +80,6 @@ def get_employee_filter(request):
 
 def get_course_filter(request):
     """استخراج فلتر الكورس من الطلب"""
-    course_id = request.GET.get('course')
-    if course_id:
-        return Course.objects.filter(id=course_id).first()
     return None
 
 
@@ -116,7 +111,7 @@ def daily_report(request):
         active_branches = visible_branches
 
     # جلب البيانات
-    incomes = Income.objects.filter(branch__in=active_branches, date=selected_date).select_related('student', 'course', 'collected_by')
+    incomes = Income.objects.filter(branch__in=active_branches, date=selected_date).select_related('collected_by')
     expenses = Expense.objects.filter(branch__in=active_branches, date=selected_date).select_related('created_by')
 
     # --- منطق التصدير ---
@@ -125,8 +120,7 @@ def daily_report(request):
     # 1. تصدير إيرادات Excel
     if export_type == 'income_excel':
         columns = {
-            'student__full_name': 'اسم الطالب',
-            'course__name': 'الدورة',
+            'party_name': 'الاسم / الجهة',
             'amount': 'المبلغ',
             'income_type': 'النوع',
             'payment_method': 'طريقة الدفع',
@@ -224,8 +218,7 @@ def monthly_report(request):
         year=year,
         month=month
     ).aggregate(total=Sum('amount'))['total'] or 0
-    new_students = Student.objects.filter(branch__in=active_branches,
-                                          registration_date__range=[month_start, month_end]).count()
+    new_students = 0
     achievement_percentage = (total_income / total_target * 100) if total_target > 0 else 0
 
     context = {
@@ -256,11 +249,7 @@ def branches_report(request):
     start_date, end_date = get_date_range(request)
     
     # ===== أكثر المعاهد عددًا من حيث الطلاب =====
-    branches_by_students = Branch.objects.filter(
-        student__registration_date__range=[start_date, end_date]
-    ).annotate(
-        students_count=Count('student', distinct=True)
-    ).order_by('-students_count')[:10]
+    branches_by_students = []
     
     # ===== أكثر المعاهد دخلًا (إجمالي) =====
     # جلب الإيرادات أولاً ثم ربطها بالفروع
@@ -342,15 +331,7 @@ def employees_report(request):
     ).order_by('-registrations_count')[:10]
     
     # ===== أكثر الموظفين من حيث عدد الطلاب المسجلين (طلاب فريدين) =====
-    emp_std_filter = Q(income__date__range=[start_date, end_date])
-    if branch:
-        emp_std_filter &= Q(income__branch=branch)
-    
-    employees_by_students = User.objects.filter(
-        emp_std_filter
-    ).annotate(
-        unique_students=Count('income__student', distinct=True)
-    ).order_by('-unique_students')[:10]
+    employees_by_students = []
     
     # ===== أكثر الموظفين إيرادات =====
     income_by_employee = Income.objects.filter(
@@ -400,39 +381,8 @@ def courses_report(request):
     start_date, end_date = get_date_range(request)
     branch = get_branch_filter(request)
     
-    # ===== أكثر الدورات تسجيلًا (عدد الطلاب) =====
-    std_filter = Q(student__registration_date__range=[start_date, end_date])
-    if branch:
-        std_filter &= Q(student__branch=branch)
-    
-    courses_by_students = Course.objects.filter(
-        course_type='course'
-    ).filter(
-        std_filter
-    ).annotate(
-        students_count=Count('student', distinct=True)
-    ).order_by('-students_count')[:10]
-    
-    # ===== أكثر الدورات دخلًا =====
-    income_by_course = Income.objects.filter(
-        date__range=[start_date, end_date],
-        course__course_type='course'
-    )
-    if branch:
-        income_by_course = income_by_course.filter(branch=branch)
-    
-    income_by_course = income_by_course.values('course').annotate(
-        total=Sum('amount')
-    ).order_by('-total')[:10]
-    
+    courses_by_students = []
     courses_by_income = []
-    for item in income_by_course:
-        try:
-            course = Course.objects.get(id=item['course'])
-            course.total_income = item['total']
-            courses_by_income.append(course)
-        except Course.DoesNotExist:
-            pass
     
     context = {
         'courses_by_students': courses_by_students,
@@ -460,42 +410,9 @@ def diplomas_report(request):
     start_date, end_date = get_date_range(request)
     branch = get_branch_filter(request)
     
-    # ===== أكثر الدبلومات تسجيلًا =====
-    std_filter = Q(student__registration_date__range=[start_date, end_date])
-    if branch:
-        std_filter &= Q(student__branch=branch)
-    
-    diplomas_by_students = Course.objects.filter(
-        course_type='diploma'
-    ).filter(
-        std_filter
-    ).annotate(
-        students_count=Count('student', distinct=True)
-    ).order_by('-students_count')[:10]
-    
-    # ===== أكثر الدبلومات دخلًا =====
-    income_by_diploma = Income.objects.filter(
-        date__range=[start_date, end_date],
-        course__course_type='diploma'
-    )
-    if branch:
-        income_by_diploma = income_by_diploma.filter(branch=branch)
-    
-    income_by_diploma = income_by_diploma.values('course').annotate(
-        total=Sum('amount')
-    ).order_by('-total')[:10]
-    
+    diplomas_by_students = []
     diplomas_by_income = []
-    for item in income_by_diploma:
-        try:
-            diploma = Course.objects.get(id=item['course'])
-            diploma.total_income = item['total']
-            diplomas_by_income.append(diploma)
-        except Course.DoesNotExist:
-            pass
-    
-    # ===== تفاصيل كل دبلوم =====
-    diplomas_detail = Course.objects.filter(course_type='diploma')
+    diplomas_detail = []
     
     context = {
         'diplomas_by_students': diplomas_by_students,
@@ -526,10 +443,8 @@ def time_analysis_report(request):
     
     # فلتر الفرع
     base_filter = Q(date__range=[start_date, end_date])
-    student_filter = Q(registration_date__range=[start_date, end_date])
     if branch:
         base_filter &= Q(branch=branch)
-        student_filter &= Q(branch=branch)
     
     # ===== أكثر الأيام تسجيلًا =====
     top_days = Income.objects.filter(
@@ -615,10 +530,7 @@ def kpis_dashboard(request):
     branch = get_branch_filter(request)
     
     # ===== إجمالي الطلاب =====
-    std_filter = Q(registration_date__range=[start_date, end_date])
-    if branch:
-        std_filter &= Q(branch=branch)
-    total_students = Student.objects.filter(std_filter).count()
+    total_students = 0
     
     # ===== إجمالي الإيرادات =====
     inc_filter = Q(date__range=[start_date, end_date])

@@ -14,7 +14,6 @@ from .forms import UserCreateForm, UserUpdateForm  # سأعطيك كود الف�
 def profile(request):
     """صفحة الملف الشخصي مع تقرير نشاط الموظف"""
     from transactions.models import Income
-    from students.models import Student
     from django.db.models import Sum, Count, Q
     from datetime import date, timedelta
     import json
@@ -52,12 +51,7 @@ def profile(request):
     )
     
     # 4. الطلاب المسجلين على يد هذا الموظف
-    registered_students = Student.objects.filter(
-        id__in=Income.objects.filter(
-            collected_by=user,
-            income_type='registration'
-        ).values('student_id')
-    ).count()
+    registered_students = 0
     
     # 5. آخر 30 يوم - بيانات الرسم البياني
     last_30_days = []
@@ -106,7 +100,7 @@ def profile(request):
     # 7. آخر التحصيلات
     recent_transactions = Income.objects.filter(
         collected_by=user
-    ).select_related('student', 'course', 'branch').order_by('-created_at')[:10]
+    ).select_related('branch').order_by('-created_at')[:10]
     
     # 8. ترتيب الموظف بين زملائه في الفرع
     branch_ranking = []
@@ -392,145 +386,5 @@ def import_users_excel(request):
 
 
 # =============================================================================
-# إشعارات النظام الداخلية
-# =============================================================================
-
-@login_required
-def get_notifications(request):
-    """
-    API لجلب الإشعارات (JSON) - للتحديث الفوري
-    """
-    from .models import Notification
-    
-    notifications = request.user.notifications.filter(
-        is_read=False
-    ).select_related('related_income', 'related_student')[:20]
-    
-    data = []
-    for notif in notifications:
-        notif_data = {
-            'id': notif.id,
-            'title': notif.title,
-            'message': notif.message,
-            'type': notif.notification_type,
-            'created_at': notif.created_at.strftime('%Y-%m-%d %H:%M'),
-            'time_ago': _get_time_ago(notif.created_at),
-            'icon': _get_notification_icon(notif.notification_type),
-            'color': _get_notification_color(notif.notification_type),
-        }
-        
-        # إضافة رابط التفاصيل إن وجد
-        if notif.related_income:
-            notif_data['link'] = f'/transactions/income/{notif.related_income.id}/'
-        elif notif.related_expense:
-            notif_data['link'] = f'/transactions/expense/{notif.related_expense.id}/'
-        elif notif.related_student:
-            notif_data['link'] = f'/students/{notif.related_student.id}/'
-        else:
-            notif_data['link'] = '#'
-        
-        data.append(notif_data)
-    
-    return JsonResponse({
-        'notifications': data,
-        'unread_count': len(data)
-    })
-
-
-@login_required
-def mark_notification_read(request, pk):
-    """
-    تحديد إشعار كمقروء
-    """
-    from .models import Notification
-    
-    notification = get_object_or_404(Notification, pk=pk, recipient=request.user)
-    notification.mark_as_read()
-    
-    return JsonResponse({'success': True})
-
-
-@login_required
-def mark_all_notifications_read(request):
-    """
-    تحديد كل الإشعارات كمقروءة
-    """
-    from .models import Notification
-    from django.utils import timezone
-    
-    request.user.notifications.filter(is_read=False).update(
-        is_read=True,
-        read_at=timezone.now()
-    )
-    
-    return JsonResponse({'success': True})
-
-
-@login_required
-def notifications_list(request):
-    """
-    صفحة عرض كل الإشعارات
-    """
-    from .models import Notification
-    
-    notifications = request.user.notifications.select_related(
-        'related_income', 'related_expense', 'related_student'
-    )[:50]
-    
-    # تقسيم الإشعارات
-    unread = [n for n in notifications if not n.is_read]
-    read = [n for n in notifications if n.is_read]
-    
-    return render(request, 'accounts/notifications_list.html', {
-        'unread_notifications': unread,
-        'read_notifications': read,
-    })
-
-
-# =============================================================================
 # دوال مساعدة
 # =============================================================================
-
-def _get_time_ago(created_at):
-    """تحويل التاريخ إلى نص مثل 'منذ 5 دقائق'"""
-    from django.utils import timezone
-    from datetime import timedelta
-    
-    now = timezone.now()
-    diff = now - created_at
-    
-    if diff < timedelta(minutes=1):
-        return 'الآن'
-    elif diff < timedelta(hours=1):
-        minutes = int(diff.seconds / 60)
-        return f'منذ {minutes} دقيقة'
-    elif diff < timedelta(days=1):
-        hours = int(diff.seconds / 3600)
-        return f'منذ {hours} ساعة'
-    else:
-        days = diff.days
-        return f'منذ {days} يوم'
-
-
-def _get_notification_icon(notification_type):
-    """إيقونة الإشعار حسب النوع"""
-    icons = {
-        'income': 'fa-money-bill-wave',
-        'expense': 'fa-file-invoice-dollar',
-        'installment': 'fa-calendar-check',
-        'registration': 'fa-user-plus',
-        'system': 'fa-bell',
-    }
-    return icons.get(notification_type, 'fa-bell')
-
-
-def _get_notification_color(notification_type):
-    """لون الإشعار حسب النوع"""
-    colors = {
-        'income': 'success',
-        'expense': 'danger',
-        'installment': 'info',
-        'registration': 'primary',
-        'system': 'warning',
-    }
-    return colors.get(notification_type, 'secondary')

@@ -11,8 +11,6 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('branches', '0001_initial'),
-        ('courses', '0001_initial'),
-        ('students', '0001_initial'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -52,8 +50,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')),
                 ('branch', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='branches.branch', verbose_name='الفرع')),
                 ('collected_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='حصل بواسطة')),
-                ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='courses.course', verbose_name='الدورة/الدبلومة')),
-                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='students.student', verbose_name='الطالب')),
+
             ],
             options={
                 'verbose_name': 'إيراد',

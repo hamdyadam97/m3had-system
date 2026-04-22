@@ -111,8 +111,8 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>الطالب</th>
-                                <th>الدورة</th>
+                                <th>الطرف</th>
+                                <th>ملاحظات</th>
                                 <th>النوع</th>
                                 <th>المبلغ</th>
                                 <th>طريقة الدفع</th>
@@ -124,8 +124,8 @@
                             {% for income in incomes %}
                             <tr>
                                 <td>{{ forloop.counter }}</td>
-                                <td>{{ income.student.full_name }}</td>
-                                <td>{{ income.course.name }}</td>
+                                <td>{{ income.party_name|default:"غير محدد" }}</td>
+                                <td>{{ income.notes|truncatechars:25|default:"-" }}</td>
                                 <td>
                                     <span class="badge {% if income.income_type == 'registration' %}bg-success{% else %}bg-info{% endif %}">
                                         {{ income.get_income_type_display }}

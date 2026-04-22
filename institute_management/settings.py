@@ -20,11 +20,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 # بيانات الاعتماد من .env (للمفاتيح الحساسة) - الأولوية للـ .env
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-WHATSAPP_API_TOKEN = os.environ.get('WHATSAPP_API_TOKEN', '')
-WHATSAPP_INSTANCE_ID = os.environ.get('WHATSAPP_INSTANCE_ID', '')
-CALLMEBOT_API_KEY = os.environ.get('CALLMEBOT_API_KEY', '')
 
 
 # Quick-start development settings - unsuitable for production
@@ -57,7 +52,6 @@ INSTALLED_APPS = [
     'accounts',
     'branches',
     'courses',
-    'students',
     'transactions',
     'reports',
     'dashboard',
@@ -86,6 +80,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'branches.context_processors.branch_context',
             ],
         },
     },
@@ -105,6 +100,9 @@ DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'OPTIONS': {
+                'init_command': 'PRAGMA foreign_keys=OFF;',
+            },
         }
 }
 
@@ -186,29 +184,6 @@ LOGGING = {
         },
     },
 }
-
-# ==================== Email Settings ====================
-# الإعدادات الأساسية (المفاتيح الحساسة تُحمل من .env في أعلى الملف)
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp-relay.brevo.com'  # Brevo SMTP
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-# EMAIL_HOST_USER و EMAIL_HOST_PASSWORD يُحملان من .env (سطر 23-24)
-DEFAULT_FROM_EMAIL = 'hamdy.adam@ararhni.com' # Your verified sender email
-
-# ==================== WhatsApp Settings ====================
-WHATSAPP_PROVIDER = 'ultramsg'
-# WHATSAPP_API_TOKEN و WHATSAPP_INSTANCE_ID يُحملان من .env (سطر 25-26)
-WHATSAPP_API_URL = 'https://api.ultramsg.com/{instance_id}/messages/chat'
-
-# ==================== Notification Settings ====================
-# تفعيل/تعطيل الإشعارات (سيتم التحكم فيها من قاعدة البيانات)
-ENABLE_EMAIL_NOTIFICATIONS = True
-ENABLE_WHATSAPP_NOTIFICATIONS = True
-ENABLE_DAILY_REPORTS = True
-
-# توقيت إرسال التقرير اليومي (ساعة:دقيقة)
-DAILY_REPORT_TIME = '20:00'  # الساعة 8 مساءً
 
 # ==================== Celery Configuration ====================
 # Redis as broker and backend

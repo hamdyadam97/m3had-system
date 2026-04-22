@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-table text-success"></i> {{ title }}</h2>
+    <a href="{% url 'transactions:income_list' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-right"></i> رجوع للإيرادات
+    </a>
+</div>
+
+<!-- 🔴 رسائل Django Messages -->
+{% if messages %}
+<div class="messages mb-3">
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- 🔴 أخطاء عامة للـ Formset -->
+{% if formset.non_form_errors %}
+<div class="alert alert-danger">
+    <h6><i class="fas fa-exclamation-triangle"></i> أخطاء عامة:</h6>
+    <ul class="mb-0">
+        {% for error in formset.non_form_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="card border-success">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+        <span><i class="fas fa-edit"></i> تسجيل مجموعة حركات مالية</span>
+        <button type="button" class="btn btn-light btn-sm" onclick="addRow()">
+            <i class="fas fa-plus"></i> إضافة صف جديد
+        </button>
+    </div>
+    <div class="card-body">
+        <form method="post" id="excelTransactionForm" autocomplete="off">
+            {% csrf_token %}
+            {{ formset.management_form }}
+
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle" id="transaction-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 40px;">#</th>
+                            <th>الاسم / الجهة *</th>
+                            <th>الرقم</th>
+                            <th>طريقة الدفع</th>
+                            <th>المبلغ *</th>
+                            <th>التاريخ *</th>
+                            <th>تاريخ التسجيل</th>
+                            <th>النوع *</th>
+                            <th>الفرع *</th>
+                            <th>الدورة</th>
+                            <th>المدينة</th>
+                            <th>المحصل</th>
+                            <th>رقم العملية</th>
+                            <th>ملاحظات</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in formset.forms %}
+                        <!-- 🔴 لو فيه errors، الصف ياخد لون أحمر -->
+                        <tr class="form-row {% if form.errors %}table-danger{% endif %}">
+                            <td class="row-num">{{ forloop.counter }}</td>
+
+                            <!-- الاسم / الجهة -->
+                            <td>
+                                {{ form.party_name }}
+                                {% if form.party_name.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.party_name.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.id_number }}
+                                {% if form.id_number.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.id_number.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.payment_method }}
+                                {% if form.payment_method.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.payment_method.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- المبلغ -->
+                            <td>
+                                {{ form.amount }}
+                                {% if form.amount.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.amount.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- التاريخ -->
+                            <td>
+                                {{ form.date }}
+                                {% if form.date.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.date.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.registration_date }}
+                                {% if form.registration_date.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.registration_date.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- النوع -->
+                            <td>
+                                {{ form.transaction_type }}
+                                {% if form.transaction_type.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.transaction_type.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- الفرع -->
+                            <td>
+                                {{ form.branch }}
+                                {% if form.branch.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.branch.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <!-- الدورة -->
+                            <td>
+                                {{ form.course }}
+                                {% if form.course.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.course.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.city }}
+                                {% if form.city.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.city.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.collected_by }}
+                                {% if form.collected_by.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.collected_by.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.transaction_number }}
+                                {% if form.transaction_number.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.transaction_number.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in form.notes.errors %}<div>{{ error }}</div>{% endfor %}
+                                </div>
+                                {% endif %}
+                            </td>
+
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-danger remove-row" onclick="removeRow(this)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- 🔴 أخطاء غير مرتبطة بحقل معين -->
+                        {% if form.non_field_errors %}
+                        <tr class="table-danger">
+                            <td colspan="15" class="py-1">
+                                <div class="alert alert-danger py-1 mb-0">
+                                    <strong>أخطاء في الصف {{ forloop.counter }}:</strong>
+                                    {% for error in form.non_field_errors %}
+                                    <span>{{ error }}</span>{% if not forloop.last %}, {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="text-center mt-3">
+                <button type="submit" class="btn btn-success btn-lg px-5">
+                    <i class="fas fa-save"></i> حفظ الكل
+                </button>
+                <button type="reset" class="btn btn-outline-secondary btn-lg px-4 ms-2" onclick="resetForm()">
+                    <i class="fas fa-eraser"></i> تفريغ
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(function(input) {
+        if (!input.value) input.value = today;
+    });
+
+    document.getElementById('excelTransactionForm').addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            this.submit();
+        }
+    });
+
+    updateRowNumbers();
+});
+
+function getTotalForms() {
+    return document.getElementById('id_form-TOTAL_FORMS');
+}
+
+function updateRowNumbers() {
+    document.querySelectorAll('#transaction-table tbody tr.form-row').forEach(function(row, index) {
+        const numCell = row.querySelector('.row-num');
+        if (numCell) numCell.textContent = index + 1;
+    });
+}
+
+function updateElementIndex(element, prefix, ndx) {
+    const idRegex = new RegExp('(' + prefix + '-\\d+)');
+    const replacement = prefix + '-' + ndx;
+    if (element.id) element.id = element.id.replace(idRegex, replacement);
+    if (element.name) element.name = element.name.replace(idRegex, replacement);
+    if (element.getAttribute('for')) element.setAttribute('for', element.getAttribute('for').replace(idRegex, replacement));
+}
+
+function addRow() {
+    const tableBody = document.querySelector('#transaction-table tbody');
+    const totalForms = getTotalForms();
+    const rowCount = parseInt(totalForms.value);
+    const firstRow = tableBody.querySelector('tr.form-row');
+
+    if (!firstRow) return;
+
+    const newRow = firstRow.cloneNode(true);
+
+    newRow.querySelectorAll('input, select, textarea').forEach(function(input) {
+        input.value = '';
+        if (input.type === 'date') {
+            input.value = new Date().toISOString().split('T')[0];
+        }
+        // 🔴 نمسح أي أخطاء ظاهرة من الصف المنسوخ
+        input.classList.remove('is-invalid');
+        updateElementIndex(input, 'form', rowCount);
+    });
+
+    newRow.querySelectorAll('.text-danger.small').forEach(function(el) {
+        el.remove();
+    });
+    newRow.classList.remove('table-danger');
+
+    tableBody.appendChild(newRow);
+    totalForms.value = rowCount + 1;
+    updateRowNumbers();
+
+    const firstInput = newRow.querySelector('input');
+    if (firstInput) firstInput.focus();
+}
+
+function removeRow(button) {
+    const tableBody = document.querySelector('#transaction-table tbody');
+    const rows = tableBody.querySelectorAll('tr.form-row');
+
+    if (rows.length <= 1) {
+        const row = button.closest('tr');
+        row.querySelectorAll('input, textarea').forEach(function(input) {
+            input.value = '';
+            if (input.type === 'date') {
+                input.value = new Date().toISOString().split('T')[0];
+            }
+        });
+        row.querySelectorAll('select').forEach(function(select) {
+            select.selectedIndex = 0;
+        });
+        return;
+    }
+
+    const row = button.closest('tr');
+
+    // 🔴 لو فيه صف error تحته، نمسحه كمان
+    const nextRow = row.nextElementSibling;
+    if (nextRow && nextRow.querySelector('.alert-danger')) {
+        nextRow.remove();
+    }
+
+    row.remove();
+
+    const totalForms = getTotalForms();
+    const remainingRows = tableBody.querySelectorAll('tr.form-row');
+    totalForms.value = remainingRows.length;
+
+    remainingRows.forEach(function(row, index) {
+        row.querySelectorAll('input, select, textarea, label').forEach(function(element) {
+            updateElementIndex(element, 'form', index);
+        });
+    });
+
+    updateRowNumbers();
+}
+
+function resetForm() {
+    const tableBody = document.querySelector('#transaction-table tbody');
+    const rows = tableBody.querySelectorAll('tr.form-row');
+
+    rows.forEach(function(row, index) {
+        if (index === 0) {
+            row.querySelectorAll('input, textarea').forEach(function(input) {
+                input.value = '';
+                if (input.type === 'date') {
+                    input.value = new Date().toISOString().split('T')[0];
+                }
+            });
+            row.querySelectorAll('select').forEach(function(select) {
+                select.selectedIndex = 0;
+            });
+            row.classList.remove('table-danger');
+            row.querySelectorAll('.text-danger.small').forEach(function(el) {
+                el.remove();
+            });
+        } else {
+            row.remove();
+        }
+    });
+
+    // 🔴 نمسح أي صفوف أخطاء متبقية
+    tableBody.querySelectorAll('tr:not(.form-row)').forEach(function(row) {
+        row.remove();
+    });
+
+    getTotalForms().value = 1;
+    updateRowNumbers();
+}
+</script>
+{% endblock %}

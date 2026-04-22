@@ -7,10 +7,7 @@ from django.contrib.auth.models import Group
 
 from branches.models import Branch
 from transactions.models import Income, Expense
-from students.models import Student
-from students.notification_models import NotificationLog
-from courses.models import Course
-from accounts.models import User, Notification
+from accounts.models import User
 
 
 @login_required
@@ -31,7 +28,6 @@ def dashboard(request):
     # 2. تصفية البيانات المالية
     income_qs = Income.objects.filter(branch__in=visible_branches)
     expense_qs = Expense.objects.filter(branch__in=visible_branches)
-    student_qs = Student.objects.filter(branch__in=visible_branches)
 
     # 3. حساب الإحصائيات المالية
     today_income = income_qs.filter(date=today).aggregate(total=Sum('amount'))['total'] or 0
@@ -50,10 +46,8 @@ def dashboard(request):
     # حساب نسبة الإنجاز
     achievement_percentage = (monthly_income / total_target * 100) if total_target > 0 else 0
 
-    # إحصائيات الطلاب
+    # إحصائيات التسجيلات
     today_registrations = income_qs.filter(date=today, income_type='registration').count()
-    new_students_month = student_qs.filter(registration_date__gte=month_start).count()
-    total_active_students = student_qs.filter(is_active=True).count()
 
     # ====== إحصائيات إضافية للأدمن ======
     context = {
@@ -66,8 +60,8 @@ def dashboard(request):
         'monthly_expenses': monthly_expenses,
         'monthly_target': total_target,
         'achievement_percentage': round(achievement_percentage, 2),
-        'new_students': new_students_month,
-        'total_students': total_active_students,
+        'new_students': 0,
+        'total_students': 0,
         'is_global_view': visible_branches.count() > 1,
     }
 
@@ -76,7 +70,6 @@ def dashboard(request):
         context.update({
             'total_branches': Branch.objects.filter(is_active=True).count(),
             'total_users': User.objects.filter(is_active=True).count(),
-            'total_courses': Course.objects.filter(is_active=True).count(),
             'total_income_month': monthly_income,
             'total_expense_month': monthly_expenses,
         })
@@ -88,7 +81,6 @@ def dashboard(request):
         branch_monthly_income = Income.objects.filter(branch=branch, date__gte=month_start).aggregate(total=Sum('amount'))['total'] or 0
         branch_target = Decimal(str(branch.get_current_month_target() or 0))
         branch_achievement = (branch_monthly_income / branch_target * 100) if branch_target > 0 else 0
-        branch_students = Student.objects.filter(branch=branch, is_active=True).count()
         
         branches_with_stats.append({
             'id': branch.id,
@@ -97,7 +89,7 @@ def dashboard(request):
             'monthly_income': branch_monthly_income,
             'monthly_target': branch_target,
             'achievement': round(float(branch_achievement), 1),
-            'students_count': branch_students,
+            'students_count': 0,
         })
     
     context['branches_with_stats'] = branches_with_stats
@@ -124,13 +116,13 @@ def dashboard(request):
     recent_activities = []
     
     # آخر الإيرادات
-    recent_incomes = income_qs.select_related('student', 'branch').order_by('-created_at')[:5]
+    recent_incomes = income_qs.select_related('branch').order_by('-created_at')[:5]
     for income in recent_incomes:
         recent_activities.append({
             'type': 'income',
             'icon': 'fa-money-bill-wave',
             'title': f"{'تحصيل قسط' if income.income_type == 'installment' else 'تسجيل جديد'}",
-            'description': f"{income.student.full_name} - {income.amount:,.0f} ر.س",
+            'description': f"{income.party_name} - {income.amount:,.0f} ر.س",
             'time': income.created_at.strftime('%H:%M'),
         })
     
@@ -145,34 +137,9 @@ def dashboard(request):
             'time': expense.created_at.strftime('%H:%M'),
         })
     
-    # آخر الطلاب
-    recent_students = student_qs.order_by('-created_at')[:3]
-    for student in recent_students:
-        recent_activities.append({
-            'type': 'student',
-            'icon': 'fa-user-graduate',
-            'title': 'طالب جديد',
-            'description': student.full_name,
-            'time': student.created_at.strftime('%d/%m'),
-        })
-    
     # ترتيب النشاطات حسب الوقت
     context['recent_activities'] = sorted(recent_activities, key=lambda x: x['time'], reverse=True)[:8]
 
-    # ====== الإشعارات ======
-    # 1. الإشعارات الداخلية للمستخدم (غير مقروءة)
-    unread_notifications = Notification.objects.filter(
-        recipient=user,
-        is_read=False
-    ).order_by('-created_at')[:5]
-    context['unread_notifications'] = unread_notifications
-    context['unread_notifications_count'] = unread_notifications.count()
-    
-    # 2. سجل الإشعارات المرسلة للطلاب (آخر 5)
-    recent_notification_logs = NotificationLog.objects.select_related(
-        'student', 'installment'
-    ).order_by('-created_at')[:5]
-    context['recent_notification_logs'] = recent_notification_logs
 
     return render(request, 'dashboard/dashboard.html', context)
 
@@ -212,10 +179,6 @@ def branch_dashboard(request, branch_id):
     else:
         achievement_percentage = 0
 
-    top_courses = Course.objects.filter(branches=branch).annotate(
-        students_count=Count('student', filter=Q(student__branch=branch, student__is_active=True))
-    ).order_by('-students_count')[:5]
-
     context = {
         'branch': branch,
         'today_income': today_income,
@@ -226,6 +189,6 @@ def branch_dashboard(request, branch_id):
         'monthly_net': monthly_income - monthly_expenses,
         'monthly_target': target_amount,
         'achievement_percentage': round(float(achievement_percentage), 1),
-        'top_courses': top_courses,
+        'top_courses': [],
     }
     return render(request, 'dashboard/branch_dashboard.html', context)

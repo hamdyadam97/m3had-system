@@ -16,8 +16,12 @@
 </ul>
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-money-bill-wave"></i> الإيرادات</h2>
-    <a href="{% url 'transactions:income_add' %}" class="btn btn-primary">
-        <i class="fas fa-plus"></i> تسجيل إيراد جديد
+
+    <a href="{% url 'transactions:excel_style_transaction' %}" class="btn btn-success">
+        <i class="fas fa-table"></i> تسجيل سريع (Excel)
+    </a>
+    <a href="{% url 'transactions:excel_import' %}" class="btn btn-warning">
+        <i class="fas fa-file-excel"></i> استيراد Excel
     </a>
 </div>
 
@@ -29,8 +33,8 @@
                     <tr>
                         <th>#</th>
                         <th>التاريخ</th>
-                        <th>الطالب</th>
-                        <th>الدورة</th>
+                        <th>الاسم / الجهة</th>
+                        <th>ملاحظات</th>
                         <th>نوع الإيراد</th>
                         <th>المبلغ</th>
                         <th>طريقة الدفع</th>
@@ -44,8 +48,8 @@
                     <tr>
                         <td>{{ forloop.counter }}</td>
                         <td>{{ income.date|date:"Y-m-d" }}</td>
-                        <td>{{ income.student.full_name }}</td>
-                        <td>{{ income.course.name }}</td>
+                        <td>{{ income.party_name|default:"غير محدد" }}</td>
+                        <td>{{ income.notes|truncatechars:30|default:"-" }}</td>
                         <td>
                             <span class="badge {% if income.income_type == 'registration' %}bg-success{% else %}bg-info{% endif %}">
                                 {{ income.get_income_type_display }}

@@ -17,9 +17,17 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
 
     <h2 class="text-danger"><i class="fas fa-file-invoice-dollar"></i> المصروفات التشغيلية</h2>
-    <a href="{% url 'transactions:expense_add' %}" class="btn btn-danger shadow-sm">
-        <i class="fas fa-plus"></i> تسجيل مصروف جديد
-    </a>
+    <div>
+        <a href="{% url 'transactions:expense_add' %}" class="btn btn-danger shadow-sm">
+            <i class="fas fa-plus"></i> تسجيل مصروف جديد
+        </a>
+        <a href="{% url 'transactions:excel_style_expense' %}" class="btn btn-outline-danger shadow-sm">
+            <i class="fas fa-table"></i> تسجيل سريع
+        </a>
+        <a href="{% url 'transactions:excel_import_expense' %}" class="btn btn-outline-warning shadow-sm">
+            <i class="fas fa-file-excel"></i> استيراد Excel
+        </a>
+    </div>
 </div>
 
 <div class="card border-0 shadow-sm">
@@ -46,7 +54,7 @@
                         </td>
                         <td>
                             <span class="badge bg-light text-danger border border-danger border-opacity-25 px-2 py-1">
-                                {{ expense.category.name }}
+                                {{ expense.get_category_display }}
                             </span>
                         </td>
                         <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }} ر.س</td>
