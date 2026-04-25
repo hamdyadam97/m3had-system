@@ -31,6 +31,51 @@ def detect_date_format(date_str):
     return None
 
 
+def clean_course_name(name):
+    """تنظيف اسم الدورة للمطابقة الذكية"""
+    import re
+    name = str(name).strip()
+    # إزالة كلمات مثل دبلوم، دورة، دورات، تطويرية
+    name = re.sub(r'^(دبلوم|دورة|دورات|دبلومة|كورس|تطويرية)\s*', '', name)
+    # إزالة "ال" التعريف من البداية
+    name = re.sub(r'^ال', '', name)
+    # إزالة المسافات الزائدة
+    name = re.sub(r'\s+', ' ', name).strip()
+    return name
+
+
+def find_course_id(course_raw, courses_cache):
+    """البحث الذكي عن الدورة باستخدام matching مرن"""
+    cleaned_raw = clean_course_name(course_raw)
+    if not cleaned_raw:
+        return None
+
+    # محاولة 1: exact match على الاسم المنظف
+    for cname, cid in courses_cache.items():
+        cleaned_cname = clean_course_name(cname)
+        if cleaned_raw == cleaned_cname:
+            return cid
+
+    # محاولة 2: contains (المنظف داخل المنظف)
+    for cname, cid in courses_cache.items():
+        cleaned_cname = clean_course_name(cname)
+        if cleaned_raw in cleaned_cname or cleaned_cname in cleaned_raw:
+            return cid
+
+    # محاولة 3: fuzzy matching باستخدام difflib
+    import difflib
+    best_ratio = 0
+    best_id = None
+    for cname, cid in courses_cache.items():
+        cleaned_cname = clean_course_name(cname)
+        ratio = difflib.SequenceMatcher(None, cleaned_raw, cleaned_cname).ratio()
+        if ratio > best_ratio and ratio >= 0.6:
+            best_ratio = ratio
+            best_id = cid
+
+    return best_id
+
+
 def import_excel_data(file_path, mapping, branch, user):
     """استيراد بيانات من Excel حسب الـ mapping (مُحسّن بالـ bulk_create)"""
     from .models import Income
@@ -144,11 +189,13 @@ def import_excel_data(file_path, mapping, branch, user):
             course_id = None
             if mapping.get('course') is not None:
                 course_raw = str(values[mapping['course']]).strip()
-                if course_raw:
-                    for cname, cid in courses_cache.items():
-                        if course_raw in cname or cname in course_raw:
-                            course_id = cid
-                            break
+                if not course_raw:
+                    errors.append(f'صف {idx+1}: لا يمكن إضافة سعر بدون إضافة دورة')
+                    continue
+                course_id = find_course_id(course_raw, courses_cache)
+                if not course_id:
+                    errors.append(f'صف {idx+1}: الدورة "{course_raw}" غير مسجلة في النظام')
+                    continue
 
             # ملاحظات إضافية
             extra_notes = []
