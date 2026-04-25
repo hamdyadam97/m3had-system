@@ -76,6 +76,48 @@ def find_course_id(course_raw, courses_cache):
     return best_id
 
 
+def clean_person_name(name):
+    """تنظيف اسم الشخص للمطابقة الذكية"""
+    import re
+    name = str(name).strip()
+    # إزالة الألقاب الشائعة
+    name = re.sub(r'^(الأستاذ|أستاذ|الاستاذ|استاذ|أ\.|است\.|م\.|السيد|سيد)\s*', '', name)
+    # إزالة المسافات الزائدة
+    name = re.sub(r'\s+', ' ', name).strip()
+    return name
+
+
+def find_collector_id(collector_raw, collectors_cache):
+    """البحث الذكي عن المحصل باستخدام matching مرن"""
+    cleaned_raw = clean_person_name(collector_raw)
+    if not cleaned_raw:
+        return None
+
+    # محاولة 1: exact match
+    for cname, cid in collectors_cache.items():
+        if cleaned_raw == clean_person_name(cname):
+            return cid
+
+    # محاولة 2: contains
+    for cname, cid in collectors_cache.items():
+        cleaned_cname = clean_person_name(cname)
+        if cleaned_raw in cleaned_cname or cleaned_cname in cleaned_raw:
+            return cid
+
+    # محاولة 3: fuzzy matching
+    import difflib
+    best_ratio = 0
+    best_id = None
+    for cname, cid in collectors_cache.items():
+        cleaned_cname = clean_person_name(cname)
+        ratio = difflib.SequenceMatcher(None, cleaned_raw, cleaned_cname).ratio()
+        if ratio > best_ratio and ratio >= 0.5:
+            best_ratio = ratio
+            best_id = cid
+
+    return best_id
+
+
 def import_excel_data(file_path, mapping, branch, user):
     """استيراد بيانات من Excel حسب الـ mapping (مُحسّن بالـ bulk_create)"""
     from .models import Income
@@ -170,14 +212,30 @@ def import_excel_data(file_path, mapping, branch, user):
 
             # محصل (من cache)
             collector = ''
-            collected_by_user = user
+            collected_by_user_id = user.id if user else None
+            collector_found = False
             if mapping.get('collector_name') is not None:
                 collector = str(values[mapping['collector_name']]).strip()
-                if collector and collector in collectors_cache:
-                    collected_by_user_id = collectors_cache[collector]
+                if collector:
+                    found_collector_id = find_collector_id(collector, collectors_cache)
+                    if found_collector_id:
+                        collected_by_user_id = found_collector_id
+                        collector_found = True
+                    else:
+                        collector_found = False
                 else:
-                    collected_by_user_id = user.id if user else None
+                    collector_found = False
             else:
+                collector_found = False
+
+            # التحقق من وجود المحصل حسب نوع العملية
+            if income_type == 'registration' and not collector_found:
+                errors.append(f'صف {idx+1}: تسجيل جديد يتطلب محصلاً مسجلاً - المحصل "{collector}" غير موجود')
+                continue
+            elif income_type == 'installment' and not collector_found:
+                # القسط يمكن استخدام Admin
+                if collector:
+                    errors.append(f'صف {idx+1}: المحصل "{collector}" غير مسجل - سيتم استخدام المستخدم الحالي كمحصل')
                 collected_by_user_id = user.id if user else None
 
             # رقم العملية
