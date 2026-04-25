@@ -32,7 +32,8 @@
     <div class="card-body text-center">
         <h6 class="text-muted">هدف شهر {{ date.today|date:"F Y" }}</h6>
         <h3 class="text-primary fw-bold">{{ branch.get_current_month_target|floatformat:2 }} ر.س</h3>
-        <small class="text-muted">المطلوب يومياً: {{ branch.get_current_month_daily_target|floatformat:2 }} ر.س</small>
+        <small class="text-muted d-block">المطلوب أسبوعياً: {{ branch.get_weekly_target|floatformat:2 }} ر.س</small>
+        <small class="text-muted d-block">المطلوب يومياً: {{ branch.get_daily_target|floatformat:2 }} ر.س</small>
     </div>
 </div>
                 <hr>
@@ -136,6 +137,7 @@
                 <tr>
                     <th>الشهر/السنة</th>
                     <th>الهدف</th>
+                    <th>الأسبوعي</th>
                     <th>اليومي</th>
                     <th>إجراء</th>
                 </tr>
@@ -145,6 +147,7 @@
                 <tr>
                     <td>{{ t.get_month_display }} {{ t.year }}</td>
                     <td>{{ t.amount|floatformat:0 }} ر.س</td>
+                    <td>{{ t.get_weekly_target|floatformat:0 }} ر.س</td>
                     <td>{{ t.get_daily_target|floatformat:0 }} ر.س</td>
                     <td>
                         <a href="{% url 'branches:target_edit' t.pk %}" class="text-warning"><i class="fas fa-edit"></i></a>

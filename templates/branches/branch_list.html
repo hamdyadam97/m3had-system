@@ -35,6 +35,7 @@
                         <th>اسم الفرع</th>
                         <th>رقم الهاتف</th>
                         <th>الهدف الشهري</th>
+                        <th>الهدف الأسبوعي</th>
                         <th>الهدف اليومي</th>
                         <th>الحالة</th>
                         <th>تاريخ الإنشاء</th>
@@ -63,6 +64,11 @@
         {% endif %}
     {% endwith %}
 </td>                       <td>
+    <span class="text-info fw-bold">
+        {{ branch.get_weekly_target|floatformat:2 }} ر.س
+    </span>
+</td>
+                        <td>
     <span class="text-primary fw-bold">
         {{ branch.get_daily_target|floatformat:2 }} ر.س
     </span>
@@ -90,7 +96,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="9" class="text-center py-5">
+                        <td colspan="10" class="text-center py-5">
                             <i class="fas fa-city fa-3x text-muted mb-3"></i>
                             <p class="lead text-muted">لا توجد فروع مسجلة حالياً</p>
                         </td>

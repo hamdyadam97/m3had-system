@@ -30,6 +30,14 @@ class Branch(models.Model):
             return monthly_target / 30
         return 0.0
 
+    @property
+    def get_weekly_target(self):
+        """يحسب الهدف الأسبوعي (الشهري ÷ 4)"""
+        monthly_target = self.get_current_month_target()
+        if monthly_target > 0:
+            return monthly_target / 4
+        return 0.0
+
 
 class BranchTarget(models.Model):
     MONTH_CHOICES = [
@@ -51,4 +59,14 @@ class BranchTarget(models.Model):
 
     def __str__(self):
         return f"هدف {self.branch.name} - {self.month}/{self.year}"
+
+    @property
+    def get_daily_target(self):
+        """الهدف اليومي (الشهري ÷ 30)"""
+        return float(self.amount) / 30 if self.amount > 0 else 0.0
+
+    @property
+    def get_weekly_target(self):
+        """الهدف الأسبوعي (الشهري ÷ 4)"""
+        return float(self.amount) / 4 if self.amount > 0 else 0.0
 
