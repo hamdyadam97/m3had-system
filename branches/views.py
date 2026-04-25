@@ -11,14 +11,19 @@ from .models import  BranchTarget
 from datetime import date
 
 @login_required
-def branch_list(request):
+def branch_list(request, branch_form=None, open_modal=False):
     """قائمة الفروع"""
     if request.user.is_superuser or request.user.user_type == 'admin':
         branches = Branch.objects.filter(is_active=True)
     else:
         branches = Branch.objects.filter(id=request.user.branch_id) if request.user.branch else Branch.objects.none()
-    branch_form = BranchForm()
-    return render(request, 'branches/branch_list.html', {'branches': branches, 'branch_form': branch_form})
+    if branch_form is None:
+        branch_form = BranchForm()
+    return render(request, 'branches/branch_list.html', {
+        'branches': branches,
+        'branch_form': branch_form,
+        'open_modal': open_modal,
+    })
 
 
 @login_required

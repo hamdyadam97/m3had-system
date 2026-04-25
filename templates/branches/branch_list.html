@@ -107,10 +107,10 @@
     document.addEventListener('DOMContentLoaded', function() {
         // 1. فتح المودال إذا كان هناك طلب "إضافة آخر"
         const urlParams = new URLSearchParams(window.location.search);
-        // 2. أو إذا أرسل الـ View متغير show_modal (في حالة الخطأ)
-        const showModalError = "{{ show_modal }}";
+        // 2. أو إذا أرسل الـ View متغير open_modal (في حالة الخطأ)
+        const openModalFlag = "{{ open_modal }}";
 
-        if (urlParams.has('open_modal') || showModalError === "True") {
+        if (urlParams.has('open_modal') || openModalFlag === "True") {
             var myModal = new bootstrap.Modal(document.getElementById('addBranchModal'));
             myModal.show();
         }

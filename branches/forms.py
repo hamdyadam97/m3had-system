@@ -25,7 +25,7 @@ class BranchForm(forms.ModelForm):
             }),
             'phone': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': '02xxxxxxxx'
+                'placeholder': '05xxxxxxxx'
             }),
             'email': forms.EmailInput(attrs={
                 'class': 'form-control',
@@ -78,20 +78,22 @@ class BranchForm(forms.ModelForm):
         return code
 
     def clean_phone(self):
-        """التحقق من رقم الهاتف"""
+        """التحقق من رقم الهاتف (يدعم السعودي + المصري)"""
         phone = self.cleaned_data.get('phone')
         if phone:
             phone = re.sub(r'\s+|-', '', phone)
-            # السماح بأرقام أرضية (02xxxxxxx) أو محمولة (01xxxxxxxxx)
-            if re.match(r'^02\d{8,9}$', phone):
-                # رقم أرضي صحيح
+            # دعم الرقم السعودي: 05xxxxxxxx
+            if re.match(r'^05\d{8}$', phone):
                 pass
+            # دعم الرقم المصري الأرضي
+            elif re.match(r'^02\d{8,9}$', phone):
+                pass
+            # دعم الرقم المصري المحمول
             elif re.match(r'^01[0-2,5]{1}[0-9]{8}$', phone):
-                # رقم محمول صحيح
                 pass
             else:
                 raise forms.ValidationError(
-                    'رقم الهاتف غير صالح. يجب أن يكون رقم أرضي (02xxxxxxxx) أو محمول (01xxxxxxxxx)'
+                    'رقم الهاتف غير صالح. يجب أن يكون سعودي (05xxxxxxxx) أو مصري (02xxxxxxxx / 01xxxxxxxxx)'
                 )
         return phone
 
