@@ -7,6 +7,9 @@ urlpatterns = [
     # Reports Dashboard
     path('', views.reports_dashboard, name='reports_dashboard'),
     
+    # Charts / Analytics Page
+    path('charts/', views.charts_report, name='charts_report'),
+    
     # Basic Reports
     path('daily/', views.daily_report, name='daily_report'),
     path('monthly/', views.monthly_report, name='monthly_report'),

@@ -65,13 +65,13 @@
     </div>
 
     <div class="row">
-        <!-- أكثر الموظفين تسجيلًا -->
+        <!-- أكثر المحصلين تسجيلًا جديدًا -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-info text-white">
                     <h5 class="mb-0">
                         <i class="fas fa-user-plus me-2"></i>
-                        أكثر الموظفين تسجيلًا
+                        أكثر المحصلين (تسجيل جديد)
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -80,22 +80,26 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">التسجيلات</th>
+                                    <th>المحصل</th>
+                                    <th class="text-center">العدد</th>
+                                    <th class="text-center">المبلغ</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for emp in employees_by_registrations %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ emp.get_full_name|default:emp.username }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-info fs-6">{{ emp.registrations_count }}</span>
+                                        <span class="badge bg-info fs-6">{{ emp.reg_count|default:0 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark fs-6">{{ emp.reg_amount|floatformat:0 }} ر.س</span>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
+                                    <td colspan="4" class="text-center py-4 text-muted">
                                         لا توجد بيانات
                                     </td>
                                 </tr>
@@ -107,13 +111,13 @@
             </div>
         </div>
 
-        <!-- أكثر الموظفين طلابًا -->
+        <!-- أكثر المحصلين أقساطًا -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-success text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-users me-2"></i>
-                        أكثر الموظفين (طلاب)
+                        <i class="fas fa-hand-holding-usd me-2"></i>
+                        أكثر المحصلين (أقساط)
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -122,22 +126,26 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">الطلاب</th>
+                                    <th>المحصل</th>
+                                    <th class="text-center">العدد</th>
+                                    <th class="text-center">المبلغ</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for emp in employees_by_students %}
+                                {% for emp in employees_by_installments %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ emp.get_full_name|default:emp.username }}</td>
                                     <td class="text-center">
-                                        <span class="badge bg-success fs-6">{{ emp.unique_students }}</span>
+                                        <span class="badge bg-success fs-6">{{ emp.ins_count|default:0 }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-light text-dark fs-6">{{ emp.ins_amount|floatformat:0 }} ر.س</span>
                                     </td>
                                 </tr>
                                 {% empty %}
                                 <tr>
-                                    <td colspan="3" class="text-center py-4 text-muted">
+                                    <td colspan="4" class="text-center py-4 text-muted">
                                         لا توجد بيانات
                                     </td>
                                 </tr>
@@ -149,13 +157,13 @@
             </div>
         </div>
 
-        <!-- أكثر الموظفين إيرادات -->
+        <!-- أكثر المحصلين إيرادات (إجمالي) -->
         <div class="col-lg-4 mb-4">
             <div class="card shadow-sm h-100">
                 <div class="card-header bg-warning text-dark">
                     <h5 class="mb-0">
                         <i class="fas fa-money-bill-wave me-2"></i>
-                        أكثر الموظفين إيرادات
+                        أكثر المحصلين (إجمالي الإيرادات)
                     </h5>
                 </div>
                 <div class="card-body p-0">
@@ -164,22 +172,18 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>#</th>
-                                    <th>الموظف</th>
-                                    <th class="text-center">الإيرادات</th>
+                                    <th>المحصل</th>
+                                    <th class="text-center">الإجمالي</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for emp in employees_by_income %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ emp.get_full_name }}</td>
+                                    <td>{{ emp.get_full_name|default:emp.username }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-warning text-dark fs-6">
-                                            {% if emp.total_income %}
-                                                {{ emp.total_income|floatformat:0 }} ر.س
-                                            {% else %}
-                                                0 ر.س
-                                            {% endif %}
+                                            {{ emp.total_income|floatformat:0 }} ر.س
                                         </span>
                                     </td>
                                 </tr>

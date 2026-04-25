@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+
+{% block title %}الرسومات البيانية - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-chart-area text-primary"></i> الرسومات البيانية</h2>
+    <span class="text-muted">{{ today|default:'' }}</span>
+</div>
+
+<!-- صف 1: إيرادات/مصروفات شهرية + يومية -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line text-success me-2"></i> الإيرادات والمصروفات - آخر 30 يوم</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="daily30Chart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-bar text-primary me-2"></i> الإيرادات والمصروفات - آخر 12 شهر</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthly12Chart" height="90"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- صف 2: فروع + دورات -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-building text-danger me-2"></i> أكثر 10 فروع إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="branchesChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-book text-info me-2"></i> أكثر 10 دورات إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="coursesChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- صف 3: محصلين + مقارنة فروع -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-users text-warning me-2"></i> أكثر 10 محصلين إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="collectorsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-code-branch text-secondary me-2"></i> مقارنة الفروع - آخر 7 أيام</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="branchComparisonChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- صف 4: توزيع الإيرادات والمصروفات -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie text-success me-2"></i> توزيع أنواع الإيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="incomeTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-chart-pie text-danger me-2"></i> توزيع فئات المصروفات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="expenseCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// بيانات Django
+const last30Days = {{ last_30_days|safe }};
+const last12Months = {{ last_12_months|safe }};
+const topBranches = {{ top_branches|safe }};
+const topCourses = {{ top_courses|safe }};
+const topCollectors = {{ top_collectors|safe }};
+const incomeTypes = {{ income_types|safe }};
+const expenseCategories = {{ expense_categories|safe }};
+const branchNames = {{ branch_names|safe }};
+const branchesComparison = {{ branches_comparison|safe }};
+
+// ألوان
+const colors = {
+    primary: '#0d6efd',
+    success: '#198754',
+    danger: '#dc3545',
+    warning: '#ffc107',
+    info: '#0dcaf0',
+    secondary: '#6c757d',
+    purple: '#6f42c1',
+    orange: '#fd7e14',
+    teal: '#20c997',
+    pink: '#d63384'
+};
+const palette = [colors.primary, colors.success, colors.danger, colors.warning, colors.info, colors.purple, colors.orange, colors.teal, colors.pink, colors.secondary];
+
+// 1. إيرادات/مصروفات 30 يوم (Line)
+new Chart(document.getElementById('daily30Chart'), {
+    type: 'line',
+    data: {
+        labels: last30Days.map(d => d.date),
+        datasets: [
+            {
+                label: 'الإيرادات',
+                data: last30Days.map(d => d.income),
+                borderColor: colors.success,
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2
+            },
+            {
+                label: 'المصروفات',
+                data: last30Days.map(d => d.expenses),
+                borderColor: colors.danger,
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 2
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// 2. إيرادات/مصروفات 12 شهر (Bar)
+new Chart(document.getElementById('monthly12Chart'), {
+    type: 'bar',
+    data: {
+        labels: last12Months.map(m => m.label),
+        datasets: [
+            {
+                label: 'الإيرادات',
+                data: last12Months.map(m => m.income),
+                backgroundColor: colors.success
+            },
+            {
+                label: 'المصروفات',
+                data: last12Months.map(m => m.expenses),
+                backgroundColor: colors.danger
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// 3. أكثر الفروع (Bar أفقي)
+new Chart(document.getElementById('branchesChart'), {
+    type: 'bar',
+    data: {
+        labels: topBranches.map(b => b.branch__name || 'غير معروف'),
+        datasets: [{
+            label: 'إجمالي الإيرادات',
+            data: topBranches.map(b => b.total),
+            backgroundColor: palette
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+    }
+});
+
+// 4. أكثر الدورات (Bar أفقي)
+new Chart(document.getElementById('coursesChart'), {
+    type: 'bar',
+    data: {
+        labels: topCourses.map(c => c.course__name || 'غير معروف'),
+        datasets: [{
+            label: 'إجمالي الإيرادات',
+            data: topCourses.map(c => c.total),
+            backgroundColor: palette
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+    }
+});
+
+// 5. أكثر المحصلين (Bar أفقي)
+new Chart(document.getElementById('collectorsChart'), {
+    type: 'bar',
+    data: {
+        labels: topCollectors.map(c => c.name || 'غير معروف'),
+        datasets: [{
+            label: 'إجمالي الإيرادات',
+            data: topCollectors.map(c => c.total),
+            backgroundColor: palette
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+    }
+});
+
+// 6. مقارنة الفروع - Line
+const branchDatasets = branchNames.map((name, idx) => ({
+    label: name,
+    data: branchesComparison.map(d => d[name] || 0),
+    borderColor: palette[idx % palette.length],
+    backgroundColor: palette[idx % palette.length],
+    fill: false,
+    tension: 0.3,
+    pointRadius: 3
+}));
+
+new Chart(document.getElementById('branchComparisonChart'), {
+    type: 'line',
+    data: {
+        labels: branchesComparison.map(d => d.date),
+        datasets: branchDatasets
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// 7. توزيع أنواع الإيرادات (Doughnut)
+new Chart(document.getElementById('incomeTypeChart'), {
+    type: 'doughnut',
+    data: {
+        labels: incomeTypes.map(t => t.label),
+        datasets: [{
+            data: incomeTypes.map(t => t.total),
+            backgroundColor: [colors.success, colors.info, colors.warning, colors.primary]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// 8. توزيع فئات المصروفات (Doughnut)
+new Chart(document.getElementById('expenseCategoryChart'), {
+    type: 'doughnut',
+    data: {
+        labels: expenseCategories.map(c => c.label),
+        datasets: [{
+            data: expenseCategories.map(c => c.total),
+            backgroundColor: palette
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+</script>
+{% endblock %}

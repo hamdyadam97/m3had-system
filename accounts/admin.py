@@ -8,20 +8,21 @@ from .models import User
 class CustomUserAdmin(UserAdmin):
     # الحقول المعروضة في قائمة المستخدمين
     list_display = [
-        'username', 'get_full_name', 'email', 'user_type', 
-        'branch', 'get_groups', 'is_active', 'date_joined'
+        'username', 'get_full_name', 'email', 'user_type', 'job_title',
+        'branch', 'id_number', 'phone', 'approval_status',
+        'get_groups', 'is_active', 'date_joined'
     ]
     
     # الفلاتر الجانبية
     list_filter = [
-        'user_type', 'is_active', 'branch', 'groups', 
+        'user_type', 'approval_status', 'is_active', 'branch', 'groups',
         'date_joined', 'is_superuser'
     ]
     
     # حقول البحث
     search_fields = [
-        'username', 'first_name', 'last_name', 'email', 
-        'phone', 'branch__name', 'user_type'
+        'username', 'first_name', 'last_name', 'email', 'id_number',
+        'phone', 'branch__name', 'user_type', 'job_title'
     ]
     
     # الترتيب الافتراضي
@@ -36,14 +37,14 @@ class CustomUserAdmin(UserAdmin):
     # إظهار حقول إضافية في صفحة التفاصيل
     fieldsets = UserAdmin.fieldsets + (
         ('معلومات إضافية', {
-            'fields': ('user_type', 'branch', 'phone', 'managed_branches'),
+            'fields': ('user_type', 'branch', 'phone', 'id_number', 'job_title', 'insurance_company', 'approval_status', 'managed_branches'),
         }),
     )
     
     # إظهار نفس الحقول عند إضافة مستخدم جديد
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('معلومات إضافية', {
-            'fields': ('user_type', 'branch', 'phone'),
+            'fields': ('user_type', 'branch', 'phone', 'id_number', 'job_title', 'insurance_company', 'approval_status'),
         }),
     )
     

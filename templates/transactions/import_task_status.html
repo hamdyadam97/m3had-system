@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}حالة الاستيراد - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-file-import me-2"></i> حالة استيراد Excel</h4>
+                </div>
+                <div class="card-body text-center">
+                    <div id="loadingSpinner" class="py-4">
+                        <div class="spinner-border text-primary mb-3" role="status" style="width: 4rem; height: 4rem;">
+                            <span class="visually-hidden">جاري الاستيراد...</span>
+                        </div>
+                        <h5 class="text-primary">جاري استيراد البيانات في الخلفية...</h5>
+                        <p class="text-muted">يمكنك مغادرة هذه الصفحة والعودة لاحقاً، أو الانتظار هنا.</p>
+                        <div class="progress mt-3" style="height: 10px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+                        </div>
+                    </div>
+
+                    <div id="successResult" class="d-none py-4">
+                        <i class="fas fa-check-circle text-success fa-4x mb-3"></i>
+                        <h4 class="text-success">تم الاستيراد بنجاح!</h4>
+                        <p id="successCount" class="fs-5"></p>
+                        <div id="errorsList" class="text-start mt-3 d-none">
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-triangle me-1"></i> تنبيهات:</h6>
+                                <ul id="errorsUl" class="mb-0 small"></ul>
+                            </div>
+                        </div>
+                        <a href="{% url 'transactions:income_list' %}" class="btn btn-primary mt-3">
+                            <i class="fas fa-list me-1"></i> عرض السندات المالية
+                        </a>
+                    </div>
+
+                    <div id="errorResult" class="d-none py-4">
+                        <i class="fas fa-times-circle text-danger fa-4x mb-3"></i>
+                        <h4 class="text-danger">حدث خطأ أثناء الاستيراد</h4>
+                        <p id="errorMessage" class="text-muted"></p>
+                        <a href="{% url 'transactions:excel_import' %}" class="btn btn-outline-primary mt-3">
+                            <i class="fas fa-redo me-1"></i> إعادة المحاولة
+                        </a>
+                    </div>
+
+                    <div class="mt-3">
+                        <small class="text-muted">رقم المهمة: <code>{{ task_id }}</code></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const taskId = '{{ task_id }}';
+const checkUrl = '{% url "transactions:task_status_api" task_id %}';
+
+function checkStatus() {
+    fetch(checkUrl)
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'SUCCESS') {
+                document.getElementById('loadingSpinner').classList.add('d-none');
+                const result = data.result;
+                if (result && result.status === 'success') {
+                    document.getElementById('successResult').classList.remove('d-none');
+                    document.getElementById('successCount').textContent = 'تم استيراد ' + result.imported + ' حركة مالية';
+                    if (result.errors && result.errors.length > 0) {
+                        const list = document.getElementById('errorsUl');
+                        list.innerHTML = '';
+                        result.errors.forEach(err => {
+                            const li = document.createElement('li');
+                            li.textContent = err;
+                            list.appendChild(li);
+                        });
+                        document.getElementById('errorsList').classList.remove('d-none');
+                    }
+                } else {
+                    document.getElementById('errorResult').classList.remove('d-none');
+                    document.getElementById('errorMessage').textContent = result ? result.message : 'خطأ غير معروف';
+                }
+            } else if (data.status === 'FAILURE') {
+                document.getElementById('loadingSpinner').classList.add('d-none');
+                document.getElementById('errorResult').classList.remove('d-none');
+                document.getElementById('errorMessage').textContent = 'فشلت المهمة، يرجى التحقق من السيرفر.';
+            } else {
+                // still running - check again after 2 seconds
+                setTimeout(checkStatus, 2000);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            setTimeout(checkStatus, 3000);
+        });
+}
+
+checkStatus();
+</script>
+{% endblock %}

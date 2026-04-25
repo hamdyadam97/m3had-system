@@ -1,0 +1,18 @@
+2349041141 | محمد عودة | مشرف التدريب | approved | moh-odeh@ararhni.com
+1127368932 | عايد العنزي | استقبال | approved | ayed.aleinizi@ararhni.com
+1102673504 | مشعل العنزي | استقبال | approved | mashal.awad@ararhni.com
+2530419205 | عبدالله مبارك حمد النيل | مدرب تقنية معلومات | approved | abdo.18@ararhni.com
+2591451493 | مصطفي ربيع | مدرب موارد بشرية | approved | mustafaa.eabdalhakim@ararhni.com
+2588772661 | محمد حمدي | مدرب قدرات لفظي | approved | muhammad.ajwa@ararhni.com
+1045210208 | ناصر عبدالله الطحيني | مدرب رياضيات-متعاون | approved | nasser.altahini@ararhni.com
+1000517092 | خالد الشهري | مدرس ثقافة إسلامية | approved | khaled.alshahri@ararhni.com
+1080538299 | أحلام العتيبي | مدربه أعمال وإدارة | approved | ahlam.alotaibi@ararhni.com
+2507620033 | خيري علي احمد | محصل ومسوق | not_approved | khayri.ahmed@ararhni.com
+2313310712 | محمد خوجلي | مدرس لغة | not_approved | mohammed_khougly@ararhni.com
+1079164370 | سلطان ثامر ساير العنزي | المسؤول العام للمعهد | not_approved | sultan.alanazi@ararhni.com
+1084661014 | لافي خليف العنزي | استقبال | not_approved | lafi_alenezi@ararhni.com
+1072184573 | محمد عواض الحارثي | مدرب تقنية معلومات | not_approved | mo.a.al-harthi@hotmail.com
+2560321990 | مد الإسلام | عامل النظافة | not_approved | md.alislam@ararhni.com
+2593389360 | خالد محمد ناصر | مدرس لغة | pending | Khaled.naser@ararhni.com
+2527950469 | محمد محمود الليثي | مدرس قدرات كمي | pending | mohammed.ahmed@ararhni.com
+1103284574 | اثير العنزي | مدربة تقنية معلومات | pending | atheer_mohammad@ararhni.com

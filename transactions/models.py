@@ -47,6 +47,7 @@ class Income(models.Model):
     
     # بيانات إضافية (للتسجيل بأسلوب Excel)
     party_name = models.CharField(max_length=200, blank=True, verbose_name='الاسم / الجهة')
+    id_number = models.CharField(max_length=50, blank=True, verbose_name='رقم الهوية / الملف')
     collector_name = models.CharField(max_length=100, blank=True, verbose_name='اسم المحصل')
     transaction_number = models.CharField(max_length=50, blank=True, verbose_name='رقم العملية / الإيصال')
     

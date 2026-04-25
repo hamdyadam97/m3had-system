@@ -243,19 +243,30 @@
 
     <div class="container-fluid">
         <div class="row">
-            <div class="col-md-2 sidebar p-0 d-none d-md-block sticky-top">
+            <div id="main-sidebar" class="col-md-2 sidebar p-0 d-none d-md-block sticky-top">
                 <div class="py-4">
                     <nav class="nav flex-column">
                         <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:dashboard' %}">
                             <i class="fas fa-tachometer-alt"></i> لوحة التحكم
                         </a>
 
+                        <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">الطلاب والدورات</div>
+                        <a class="nav-link {% if 'students' in request.path %}active{% endif %}" href="{% url 'transactions:student_list' %}">
+                            <i class="fas fa-user-graduate"></i> الطلاب
+                        </a>
+                        <a class="nav-link {% if 'courses' in request.path %}active{% endif %}" href="{% url 'courses:course_list' %}">
+                            <i class="fas fa-graduation-cap"></i> الدورات
+                        </a>
+
                         <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">المالية والتقارير</div>
-                        <a class="nav-link {% if 'transactions' in request.path %}active{% endif %}" href="{% url 'transactions:income_list' %}">
+                        <a class="nav-link {% if 'transactions' in request.path and 'students' not in request.path %}active{% endif %}" href="{% url 'transactions:income_list' %}">
                             <i class="fas fa-file-invoice-dollar"></i> السندات المالية
                         </a>
-                        <a class="nav-link {% if 'reports' in request.path %}active{% endif %}" href="{% url 'reports:reports_dashboard' %}">
+                        <a class="nav-link {% if request.resolver_match.url_name == 'reports_dashboard' %}active{% endif %}" href="{% url 'reports:reports_dashboard' %}">
                             <i class="fas fa-chart-pie"></i> التقارير
+                        </a>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'charts_report' %}active{% endif %}" href="{% url 'reports:charts_report' %}">
+                            <i class="fas fa-chart-area"></i> الرسومات البيانية
                         </a>
 
                         <div class="px-3 mt-3 mb-1 text-muted small fw-bold text-uppercase">إعدادات النظام</div>
@@ -272,7 +283,7 @@
                 </div>
             </div>
 
-            <div class="col-md-10 p-4">
+            <div id="main-content" class="col-md-10 p-4">
                 {% if messages %}
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm border-0">

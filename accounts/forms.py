@@ -137,7 +137,7 @@ class UserCreateForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'user_type', 'branch', 'phone']
+        fields = ['username', 'email', 'first_name', 'last_name', 'user_type', 'branch', 'phone', 'id_number', 'job_title', 'insurance_company', 'approval_status']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
@@ -146,6 +146,10 @@ class UserCreateForm(forms.ModelForm):
             'user_type': forms.Select(attrs={'class': 'form-select'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'id_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'job_title': forms.TextInput(attrs={'class': 'form-control'}),
+            'insurance_company': forms.TextInput(attrs={'class': 'form-control'}),
+            'approval_status': forms.Select(attrs={'class': 'form-select'}),
         }
     
     def clean_password2(self):
@@ -168,7 +172,7 @@ class UserUpdateForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'user_type', 'branch', 'phone', 'is_active']
+        fields = ['username', 'email', 'first_name', 'last_name', 'user_type', 'branch', 'phone', 'id_number', 'job_title', 'insurance_company', 'approval_status', 'is_active']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control'}),
             'email': forms.EmailInput(attrs={'class': 'form-control'}),
@@ -177,5 +181,9 @@ class UserUpdateForm(forms.ModelForm):
             'user_type': forms.Select(attrs={'class': 'form-select'}),
             'branch': forms.Select(attrs={'class': 'form-select'}),
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
+            'id_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'job_title': forms.TextInput(attrs={'class': 'form-control'}),
+            'insurance_company': forms.TextInput(attrs={'class': 'form-control'}),
+            'approval_status': forms.Select(attrs={'class': 'form-select'}),
             'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }

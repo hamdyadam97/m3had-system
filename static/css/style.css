@@ -1,0 +1,40 @@
+/* تنسيق حقول الفورم في الـ Modal */
+#addBranchModal input,
+#addBranchModal textarea,
+#addBranchModal select {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+#addBranchModal input:focus,
+#addBranchModal textarea:focus,
+#addBranchModal select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+    outline: none;
+}
+
+/* الحقول اللي فيها خطأ */
+#addBranchModal input.is-invalid,
+#addBranchModal textarea.is-invalid,
+#addBranchModal select.is-invalid {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+/* رسائل الخطأ */
+.invalid-feedback {
+    color: #dc3545;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* الـ Switch */
+.form-switch .form-check-input {
+    width: 2.5em;
+    height: 1.3em;
+}

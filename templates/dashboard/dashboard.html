@@ -241,7 +241,7 @@
                     <div class="progress" style="height: 25px;">
                         <div class="progress-bar {% if achievement_percentage >= 100 %}bg-success{% else %}bg-warning{% endif %}" 
                              role="progressbar" 
-                             style="width: {% if achievement_percentage > 100 %}100{% else %}{{ achievement_percentage|default:0 }}{% endif %}%"
+                             style="width: {{ achievement_width }}%"
                              aria-valuenow="{{ achievement_percentage|default:0 }}" 
                              aria-valuemin="0" 
                              aria-valuemax="100">
@@ -287,7 +287,7 @@
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
-                        <a href="{% url 'transactions:expense_add' %}" class="btn btn-warning w-100 py-3 text-white">
+                        <a href="{% url 'transactions:excel_style_expense' %}" class="btn btn-warning w-100 py-3 text-white">
                             <i class="fas fa-minus-circle fa-lg mb-2 d-block"></i>
                             تسجيل مصروف جديد
                         </a>
@@ -375,7 +375,7 @@
                                         <div class="progress flex-grow-1 me-2" style="height: 10px;">
                                             <div class="progress-bar {% if branch.achievement >= 100 %}bg-success{% elif branch.achievement >= 50 %}bg-info{% else %}bg-warning{% endif %}" 
                                                  role="progressbar" 
-                                                 style="width: {% if branch.achievement > 100 %}100{% else %}{{ branch.achievement }}{% endif %}%"></div>
+                                                 style="width: {{ branch.achievement_width }}%"></div>
                                         </div>
                                         <small>{{ branch.achievement|floatformat:0 }}%</small>
                                     </div>

@@ -55,6 +55,91 @@ def income_list(request):
     return render(request, 'transactions/income_list.html', {'incomes': incomes})
 
 
+@login_required
+@permission_required('transactions.view_income', raise_exception=True)
+def student_list(request):
+    """قائمة الطلاب المسجلين مع الدورات/الدبلومات (مجمعة بالاسم)"""
+
+    qs = Income.objects.select_related(
+        'branch', 'course', 'collected_by'
+    ).filter(
+        party_name__isnull=False
+    ).exclude(party_name='')
+
+    user = request.user
+
+    if user.is_superuser or user.user_type == 'admin':
+        pass
+    elif user.user_type == 'regional_manager':
+        qs = qs.filter(branch__in=user.managed_branches.all())
+    else:
+        qs = qs.filter(branch=user.branch) if user.branch else qs.none()
+
+    # فلتر اختياري بالاسم
+    search = request.GET.get('q')
+    if search:
+        qs = qs.filter(party_name__icontains=search)
+
+    # فلتر اختياري بالدورة
+    course_id = request.GET.get('course')
+    if course_id:
+        qs = qs.filter(course_id=course_id)
+
+    # جلب كل الأسماء المميزة (pagination على الأسماء مش على الـ records)
+    all_names = qs.values_list('party_name', flat=True).distinct().order_by('party_name')
+
+    paginator = Paginator(list(all_names), 20)
+    page_number = request.GET.get('page')
+    page_names = paginator.get_page(page_number)
+
+    # جلب كل الـ records للأسماء في الصفحة الحالية
+    records = qs.filter(party_name__in=page_names).order_by('party_name', '-date')
+
+    # تجميع البيانات بالاسم
+    from collections import defaultdict
+    students_map = defaultdict(lambda: {'courses': [], 'branches': [], 'total': 0, 'dates': [], 'records': []})
+    for r in records:
+        entry = students_map[r.party_name]
+        entry['records'].append(r)
+        if r.course and r.course not in entry['courses']:
+            entry['courses'].append(r.course)
+        if r.branch not in entry['branches']:
+            entry['branches'].append(r.branch)
+        entry['total'] += r.amount
+        entry['dates'].append(r.date)
+
+    # ترتيب النتيجة حسب ترتيب الأسماء في الصفحة
+    students_list = []
+    for name in page_names:
+        if name in students_map:
+            s = students_map[name]
+            students_list.append({
+                'name': name,
+                'courses': s['courses'],
+                'branches': s['branches'],
+                'total': s['total'],
+                'last_date': max(s['dates']),
+                'count': len(s['records']),
+            })
+
+    # جلب الدورات للفلتر
+    from courses.models import Course
+    if user.is_superuser or user.user_type == 'admin':
+        courses = Course.objects.all()
+    elif user.user_type == 'regional_manager':
+        courses = Course.objects.filter(branch__in=user.managed_branches.all())
+    else:
+        courses = Course.objects.filter(branch=user.branch) if user.branch else Course.objects.none()
+
+    return render(request, 'transactions/student_list.html', {
+        'students_list': students_list,
+        'students': page_names,  # للـ pagination template
+        'courses': courses,
+        'search': search or '',
+        'course_id': course_id or '',
+    })
+
+
 
 @login_required
 @permission_required('transactions.view_income', raise_exception=True)
@@ -67,11 +152,31 @@ def income_detail(request, pk):
     can_view = user.is_admin() or \
                (user.user_type == 'regional_manager' and income.branch in user.managed_branches.all()) or \
                (user.branch == income.branch)
-
     if not can_view:
         raise PermissionDenied
 
     return render(request, 'transactions/income_detail.html', {'income': income})
+
+
+@login_required
+@permission_required('transactions.add_income', raise_exception=True)
+def income_add(request):
+    """إضافة إيراد جديد"""
+    if request.method == 'POST':
+        form = IncomeForm(request.POST, user=request.user)
+        if form.is_valid():
+            income = form.save(commit=False)
+            if not request.user.is_admin():
+                income.branch = request.user.branch
+            income.collected_by = income.collected_by or request.user
+            if income.collected_by:
+                income.collector_name = income.collected_by.get_full_name() or income.collected_by.username
+            income.save()
+            messages.success(request, 'تم تسجيل الإيراد بنجاح!')
+            return redirect('transactions:income_list')
+    else:
+        form = IncomeForm(user=request.user)
+    return render(request, 'transactions/income_form.html', {'form': form, 'title': 'تسجيل إيراد جديد'})
 
 
 @login_required
@@ -91,27 +196,6 @@ def expense_list(request):
     paginator = Paginator(expense_queryset, 15)
     expenses = paginator.get_page(request.GET.get('page'))
     return render(request, 'transactions/expense_list.html', {'expenses': expenses})
-
-
-@login_required
-@permission_required('transactions.add_expense', raise_exception=True)
-def expense_add(request):
-    """إضافة مصروف جديد"""
-    if request.method == 'POST':
-        form = ExpenseForm(request.POST, request.FILES, user=request.user)
-        if form.is_valid():
-            expense = form.save(commit=False)
-            if not request.user.is_admin():
-                expense.branch = request.user.branch
-
-            expense.created_by = request.user
-            expense.save()
-            messages.success(request, 'تم تسجيل المصروف بنجاح!')
-            return redirect('transactions:expense_list')
-    else:
-        form = ExpenseForm(user=request.user)
-    return render(request, 'transactions/expense_form.html', {'form': form, 'title': 'تسجيل مصروف جديد'})
-@login_required
 def expense_detail(request, pk):
     """تفاصيل المصروف"""
     expense = get_object_or_404(Expense, pk=pk)
@@ -196,8 +280,6 @@ def excel_style_transaction(request):
                     payment_method = data.get('payment_method') or 'mada'
 
                     extra_notes = []
-                    if data.get('id_number'):
-                        extra_notes.append(f"رقم: {data['id_number']}")
                     if data.get('registration_date'):
                         extra_notes.append(f"تاريخ التسجيل: {data['registration_date']}")
                     if data.get('city'):
@@ -219,6 +301,7 @@ def excel_style_transaction(request):
                         collected_by=collected_by,
                         course=data.get('course'),
                         party_name=data['party_name'],
+                        id_number=data.get('id_number', ''),
                         collector_name=collector_name,
                         transaction_number=data.get('transaction_number', ''),
                         notes=full_notes,
@@ -300,13 +383,15 @@ def excel_import(request):
                 # تقدير افتراضي للـ mapping
                 initial_mapping = {
                     'party_name': 0,
-                    'payment_method': 1,
-                    'amount': 3,
-                    'date': 4,
-                    'transaction_type': 6,
-                    'city': 7,
-                    'collector_name': 8,
-                    'transaction_number': 9,
+                    'id_number': 1,
+                    'payment_method': 2,
+                    'amount': 4,
+                    'date': 5,
+                    'transaction_type': 7,
+                    'city': 8,
+                    'collector_name': 9,
+                    'transaction_number': 10,
+                    'course': 11,
                 }
 
                 mapping_form = ExcelMappingForm(initial={
@@ -331,6 +416,7 @@ def excel_import(request):
                 branch = mapping_form.cleaned_data['branch']
                 mapping = {
                     'party_name': mapping_form.cleaned_data.get('party_name'),
+                    'id_number': mapping_form.cleaned_data.get('id_number'),
                     'payment_method': mapping_form.cleaned_data.get('payment_method'),
                     'amount': mapping_form.cleaned_data['amount'],
                     'date': mapping_form.cleaned_data['date'],
@@ -338,6 +424,7 @@ def excel_import(request):
                     'city': mapping_form.cleaned_data.get('city'),
                     'collector_name': mapping_form.cleaned_data.get('collector_name'),
                     'transaction_number': mapping_form.cleaned_data.get('transaction_number'),
+                    'course': mapping_form.cleaned_data.get('course'),
                     'notes': mapping_form.cleaned_data.get('notes'),
                 }
 
@@ -345,23 +432,12 @@ def excel_import(request):
                     messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
                     return redirect('transactions:excel_import')
 
-                try:
-                    imported, errors = import_excel_data(temp_path, mapping, branch, request.user)
-                    if imported > 0:
-                        messages.success(request, f'تم استيراد {imported} حركة مالية بنجاح!')
-                    if errors:
-                        for err in errors:
-                            messages.warning(request, err)
-                except Exception as e:
-                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
-                finally:
-                    # مسح الملف المؤقت
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
-
-                return redirect('transactions:income_list')
+                # تشغيل الاستيراد في الخلفية (Celery)
+                from .tasks import import_income_excel_task
+                task = import_income_excel_task.delay(temp_path, mapping, branch.id, request.user.id)
+                request.session['last_import_task_id'] = task.id
+                messages.info(request, 'جاري استيراد الملف في الخلفية... يمكنك متابعة عملك وسيظهر الإشعار عند الانتهاء.')
+                return redirect('transactions:import_task_status', task_id=task.id)
     else:
         form = ExcelImportForm(user=request.user)
 
@@ -373,11 +449,39 @@ def excel_import(request):
 
 
 @login_required
+def import_task_status(request, task_id):
+    """صفحة متابعة حالة استيراد Excel في الخلفية"""
+    from celery.result import AsyncResult
+    from .tasks import import_income_excel_task
+
+    task = AsyncResult(task_id)
+    context = {
+        'task_id': task_id,
+        'task_status': task.status,
+        'task_result': task.result if task.ready() else None,
+    }
+    return render(request, 'transactions/import_task_status.html', context)
+
+
+@login_required
+def task_status_api(request, task_id):
+    """API JSON لمعرفة حالة Task"""
+    from celery.result import AsyncResult
+    task = AsyncResult(task_id)
+    return JsonResponse({
+        'task_id': task_id,
+        'status': task.status,
+        'ready': task.ready(),
+        'result': task.result if task.ready() and isinstance(task.result, dict) else None,
+    })
+
+
+@login_required
 @permission_required('transactions.add_expense', raise_exception=True)
 def excel_style_expense(request):
     """تسجيل مجموعة مصروفات بنفس أسلوب ملف الـ Excel"""
     if request.method == 'POST':
-        formset = ExcelStyleExpenseFormSet(request.POST, user=request.user)
+        formset = ExcelStyleExpenseFormSet(request.POST, request.FILES, user=request.user)
         if formset.is_valid():
             with transaction.atomic():
                 count = 0
@@ -393,6 +497,7 @@ def excel_style_expense(request):
                         amount=data['amount'],
                         receipt_number=data.get('receipt_number', ''),
                         notes=data.get('notes', ''),
+                        receipt_image=data.get('receipt_image'),
                         created_by=request.user,
                     )
                     count += 1
@@ -483,22 +588,12 @@ def excel_import_expense(request):
                     messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
                     return redirect('transactions:excel_import_expense')
 
-                try:
-                    imported, errors = import_excel_expense_data(temp_path, mapping, branch, request.user)
-                    if imported > 0:
-                        messages.success(request, f'تم استيراد {imported} مصروف بنجاح!')
-                    if errors:
-                        for err in errors:
-                            messages.warning(request, err)
-                except Exception as e:
-                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
-                finally:
-                    try:
-                        os.remove(temp_path)
-                    except:
-                        pass
-
-                return redirect('transactions:expense_list')
+                # تشغيل الاستيراد في الخلفية (Celery)
+                from .tasks import import_expense_excel_task
+                task = import_expense_excel_task.delay(temp_path, mapping, branch.id, request.user.id)
+                request.session['last_import_task_id'] = task.id
+                messages.info(request, 'جاري استيراد المصروفات في الخلفية... يمكنك متابعة عملك.')
+                return redirect('transactions:import_task_status', task_id=task.id)
     else:
         form = ExcelExpenseImportForm(user=request.user)
 

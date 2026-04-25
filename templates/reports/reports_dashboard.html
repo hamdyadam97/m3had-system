@@ -5,9 +5,104 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-chart-bar"></i> التقارير</h2>
+    <span class="text-muted">{{ today|default:'' }}</span>
 </div>
 
+<!-- إحصائيات الشهر الحالي -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">إجمالي الإيرادات (الشهر)</h6>
+                        <h3 class="mb-0 text-success">{{ month_income|floatformat:2 }} ج.م</h3>
+                    </div>
+                    <i class="fas fa-arrow-up fa-2x text-success opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-start border-danger border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">إجمالي المصروفات (الشهر)</h6>
+                        <h3 class="mb-0 text-danger">{{ month_expenses|floatformat:2 }} ج.م</h3>
+                    </div>
+                    <i class="fas fa-arrow-down fa-2x text-danger opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-start border-primary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="text-muted mb-1">صافي الربح (الشهر)</h6>
+                        <h3 class="mb-0 text-primary">{{ month_profit|floatformat:2 }} ج.م</h3>
+                    </div>
+                    <i class="fas fa-wallet fa-2x text-primary opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- الرسوم البيانية -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-chart-line text-primary"></i> الإيرادات والمصروفات - آخر 7 أيام</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="dailyChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-building text-danger"></i> أكثر 5 فروع إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="branchesChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-book text-info"></i> أكثر 5 دورات إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="coursesChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-users text-warning"></i> أكثر 5 محصلين إيرادات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="collectorsChart" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- روابط التقارير -->
 <div class="row">
+    <div class="col-12 mb-3">
+        <h4><i class="fas fa-folder-open"></i> التقارير المفصلة</h4>
+    </div>
     <div class="col-md-3 mb-4">
         <a href="{% url 'reports:daily_report' %}" class="text-decoration-none">
             <div class="card h-100">
@@ -19,7 +114,7 @@
             </div>
         </a>
     </div>
-    
+
     <div class="col-md-3 mb-4">
         <a href="{% url 'reports:monthly_report' %}" class="text-decoration-none">
             <div class="card h-100">
@@ -31,29 +126,161 @@
             </div>
         </a>
     </div>
-    
+
     <div class="col-md-3 mb-4">
         <a href="{% url 'reports:courses_report' %}" class="text-decoration-none">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-book fa-4x text-info mb-3"></i>
                     <h5>تقرير الدورات</h5>
-                    <p class="text-muted">إحصائيات الدورات والدبلومات</p>
+                    <p class="text-muted">طلاب - إيرادات - أقساط</p>
                 </div>
             </div>
         </a>
     </div>
-    
+
+    <div class="col-md-3 mb-4">
+        <a href="{% url 'reports:branches_report' %}" class="text-decoration-none">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-building fa-4x text-danger mb-3"></i>
+                    <h5>تقرير الفروع</h5>
+                    <p class="text-muted">دخل - مصاريف - طلاب</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
     <div class="col-md-3 mb-4">
         <a href="{% url 'reports:employees_report' %}" class="text-decoration-none">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <i class="fas fa-users fa-4x text-warning mb-3"></i>
-                    <h5>تقرير الموظفين</h5>
+                    <h5>تقرير المحصلين</h5>
                     <p class="text-muted">أداء الموظفين والمحصلين</p>
                 </div>
             </div>
         </a>
     </div>
+
+    <div class="col-md-3 mb-4">
+        <a href="{% url 'reports:time_analysis' %}" class="text-decoration-none">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-clock fa-4x text-dark mb-3"></i>
+                    <h5>تحليل الفترات الزمنية</h5>
+                    <p class="text-muted">أكثر الأيام والشهور نشاطاً</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-md-3 mb-4">
+        <a href="{% url 'reports:kpis_dashboard' %}" class="text-decoration-none">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-chart-line fa-4x text-secondary mb-3"></i>
+                    <h5>لوحة المؤشرات</h5>
+                    <p class="text-muted">KPIs وإحصائيات عامة</p>
+                </div>
+            </div>
+        </a>
+    </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+// بيانات من Django
+const last7Days = {{ last_7_days|safe }};
+const topBranches = {{ top_branches|safe }};
+const topCourses = {{ top_courses|safe }};
+const topCollectors = {{ top_collectors|safe }};
+
+// 1. رسم إيرادات/مصروفات يومية
+new Chart(document.getElementById('dailyChart'), {
+    type: 'line',
+    data: {
+        labels: last7Days.map(d => d.date),
+        datasets: [
+            {
+                label: 'الإيرادات',
+                data: last7Days.map(d => d.income),
+                borderColor: '#198754',
+                backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                fill: true,
+                tension: 0.3
+            },
+            {
+                label: 'المصروفات',
+                data: last7Days.map(d => d.expenses),
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true,
+                tension: 0.3
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'top' } },
+        scales: { y: { beginAtZero: true } }
+    }
+});
+
+// 2. رسم أكثر الفروع
+new Chart(document.getElementById('branchesChart'), {
+    type: 'doughnut',
+    data: {
+        labels: topBranches.map(b => b.branch__name || 'غير معروف'),
+        datasets: [{
+            data: topBranches.map(b => b.total),
+            backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#20c997', '#0dcaf0']
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: { legend: { position: 'bottom' } }
+    }
+});
+
+// 3. رسم أكثر الدورات
+new Chart(document.getElementById('coursesChart'), {
+    type: 'bar',
+    data: {
+        labels: topCourses.map(c => c.course__name || 'غير معروف'),
+        datasets: [{
+            label: 'إجمالي الإيرادات',
+            data: topCourses.map(c => c.total),
+            backgroundColor: '#0dcaf0'
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+    }
+});
+
+// 4. رسم أكثر المحصلين
+new Chart(document.getElementById('collectorsChart'), {
+    type: 'bar',
+    data: {
+        labels: topCollectors.map(c => c.name || 'غير معروف'),
+        datasets: [{
+            label: 'إجمالي الإيرادات',
+            data: topCollectors.map(c => c.total),
+            backgroundColor: '#ffc107'
+        }]
+    },
+    options: {
+        responsive: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true } }
+    }
+});
+</script>
 {% endblock %}

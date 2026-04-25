@@ -45,9 +45,23 @@ def dashboard(request):
 
     # حساب نسبة الإنجاز
     achievement_percentage = (monthly_income / total_target * 100) if total_target > 0 else 0
+    achievement_percentage_float = round(float(achievement_percentage), 2)
+    achievement_width = min(int(achievement_percentage_float), 100)
 
     # إحصائيات التسجيلات
     today_registrations = income_qs.filter(date=today, income_type='registration').count()
+
+    # إحصائيات الطلاب (من التسجيلات لأن مفيش students model منفصل)
+    new_students = income_qs.filter(
+        date__gte=month_start,
+        income_type='registration',
+        party_name__isnull=False
+    ).exclude(party_name='').count()
+    
+    total_students = income_qs.filter(
+        income_type='registration',
+        party_name__isnull=False
+    ).exclude(party_name='').values('party_name').distinct().count()
 
     # ====== إحصائيات إضافية للأدمن ======
     context = {
@@ -59,9 +73,10 @@ def dashboard(request):
         'monthly_income': monthly_income,
         'monthly_expenses': monthly_expenses,
         'monthly_target': total_target,
-        'achievement_percentage': round(achievement_percentage, 2),
-        'new_students': 0,
-        'total_students': 0,
+        'achievement_percentage': achievement_percentage_float,
+        'achievement_width': achievement_width,
+        'new_students': new_students,
+        'total_students': total_students,
         'is_global_view': visible_branches.count() > 1,
     }
 
@@ -82,6 +97,19 @@ def dashboard(request):
         branch_target = Decimal(str(branch.get_current_month_target() or 0))
         branch_achievement = (branch_monthly_income / branch_target * 100) if branch_target > 0 else 0
         
+        branch_new_students = Income.objects.filter(
+            branch=branch,
+            date__gte=month_start,
+            income_type='registration',
+            party_name__isnull=False
+        ).exclude(party_name='').count()
+        
+        branch_total_students = Income.objects.filter(
+            branch=branch,
+            income_type='registration',
+            party_name__isnull=False
+        ).exclude(party_name='').values('party_name').distinct().count()
+        
         branches_with_stats.append({
             'id': branch.id,
             'name': branch.name,
@@ -89,7 +117,9 @@ def dashboard(request):
             'monthly_income': branch_monthly_income,
             'monthly_target': branch_target,
             'achievement': round(float(branch_achievement), 1),
-            'students_count': 0,
+            'achievement_width': min(int(round(float(branch_achievement), 0)), 100),
+            'students_count': branch_total_students,
+            'new_students': branch_new_students,
         })
     
     context['branches_with_stats'] = branches_with_stats
@@ -179,6 +209,9 @@ def branch_dashboard(request, branch_id):
     else:
         achievement_percentage = 0
 
+    achievement_percentage_float = round(float(achievement_percentage), 1)
+    achievement_width = min(int(achievement_percentage_float), 100)
+    
     context = {
         'branch': branch,
         'today_income': today_income,
@@ -188,7 +221,8 @@ def branch_dashboard(request, branch_id):
         'monthly_expenses': monthly_expenses,
         'monthly_net': monthly_income - monthly_expenses,
         'monthly_target': target_amount,
-        'achievement_percentage': round(float(achievement_percentage), 1),
+        'achievement_percentage': achievement_percentage_float,
+        'achievement_width': achievement_width,
         'top_courses': [],
     }
     return render(request, 'dashboard/branch_dashboard.html', context)

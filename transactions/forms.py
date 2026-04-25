@@ -15,9 +15,10 @@ class IncomeForm(forms.ModelForm):
     
     class Meta:
         model = Income
-        fields = ['date', 'income_type', 'party_name', 'amount',
+        fields = ['branch', 'date', 'income_type', 'party_name', 'id_number', 'amount',
                   'payment_method', 'payment_location', 'bank_account_number', 'course', 'collected_by', 'notes']
         widgets = {
+            'branch': forms.Select(attrs={'class': 'form-select'}),
             'date': forms.DateInput(attrs={
                 'class': 'form-control',
                 'type': 'date',
@@ -30,6 +31,10 @@ class IncomeForm(forms.ModelForm):
             'party_name': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'اسم الشخص أو الجهة'
+            }),
+            'id_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'رقم الهوية أو الملف'
             }),
             'amount': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -57,9 +62,11 @@ class IncomeForm(forms.ModelForm):
             }),
         }
         labels = {
+            'branch': 'الفرع',
             'date': 'التاريخ',
             'income_type': 'نوع الإيراد',
             'party_name': 'الاسم / الجهة',
+            'id_number': 'رقم الهوية / الملف',
             'amount': 'المبلغ',
             'payment_method': 'طريقة الدفع',
             'payment_location': 'مكان الدفع',
@@ -72,6 +79,20 @@ class IncomeForm(forms.ModelForm):
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.user = user
+
+        # تحديد الفروع المتاحة
+        if user:
+            if user.is_superuser or user.user_type == 'admin':
+                self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
+            elif user.user_type == 'regional_manager':
+                self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
+            elif user.branch_id:
+                self.fields['branch'].queryset = Branch.objects.filter(id=user.branch_id, is_active=True)
+                self.fields['branch'].initial = user.branch
+                if user.user_type == 'employee':
+                    self.fields['branch'].widget = forms.HiddenInput()
+            else:
+                self.fields['branch'].queryset = Branch.objects.none()
         
         # تحديد الدورات المتاحة
         self.fields['course'].queryset = Course.objects.filter(is_active=True)
@@ -499,6 +520,18 @@ class ExcelStyleTransactionForm(forms.Form):
                 raise forms.ValidationError('التاريخ قديم جداً')
         return income_date
 
+    def clean(self):
+        cleaned_data = super().clean()
+        tx_type = cleaned_data.get('transaction_type')
+        collected_by = cleaned_data.get('collected_by')
+
+        # أنواع التسجيل الجديد (لازم يكون فيه محصل)
+        registration_types = ('registration', 'full_payment', 'full_fees', 'registration_fees')
+        if tx_type in registration_types and not collected_by:
+            self.add_error('collected_by', 'المحصل مطلوب في التسجيل الجديد')
+
+        return cleaned_data
+
 
 class ExcelImportForm(forms.Form):
     """نموذج استيراد ملف Excel"""
@@ -544,6 +577,7 @@ class ExcelMappingForm(forms.Form):
     branch = forms.ModelChoiceField(queryset=Branch.objects.filter(is_active=True), widget=forms.HiddenInput())
 
     party_name = forms.IntegerField(required=False, label='الاسم / الجهة', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
+    id_number = forms.IntegerField(required=False, label='رقم الهوية / الملف', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     payment_method = forms.IntegerField(required=False, label='طريقة الدفع', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     amount = forms.IntegerField(label='المبلغ', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     date = forms.IntegerField(label='تاريخ الدفع', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
@@ -551,6 +585,7 @@ class ExcelMappingForm(forms.Form):
     city = forms.IntegerField(required=False, label='المدينة', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     collector_name = forms.IntegerField(required=False, label='اسم المحصل', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     transaction_number = forms.IntegerField(required=False, label='رقم العملية', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
+    course = forms.IntegerField(required=False, label='الدورة / الدبلومة', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
     notes = forms.IntegerField(required=False, label='ملاحظات', widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 0}))
 
     def clean_amount(self):
@@ -636,6 +671,15 @@ class ExcelStyleExpenseForm(forms.Form):
             'class': 'form-control',
             'rows': 2,
             'placeholder': 'ملاحظات إضافية...'
+        })
+    )
+
+    receipt_image = forms.ImageField(
+        required=False,
+        label='صورة الإيصال',
+        widget=forms.FileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*,.pdf'
         })
     )
 

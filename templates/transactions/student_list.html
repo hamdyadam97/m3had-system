@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}الطلاب - نظام إدارة المعاهد{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-user-graduate"></i> الطلاب المسجلين</h2>
+    <a href="{% url 'transactions:excel_style_transaction' %}" class="btn btn-success">
+        <i class="fas fa-user-plus"></i> تسجيل طالب جديد
+    </a>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="ابحث باسم الطالب..." value="{{ search }}">
+                </div>
+            </div>
+            <div class="col-md-5">
+                <select name="course" class="form-select">
+                    <option value="">كل الدورات / الدبلومات</option>
+                    {% for course in courses %}
+                    <option value="{{ course.id }}" {% if course_id == course.id|stringformat:"s" %}selected{% endif %}>
+                        {{ course.name }} ({{ course.branch.name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-filter"></i> تصفية
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم</th>
+                        <th>الدورات / الدبلومات المسجل فيها</th>
+                        <th>الفرع</th>
+                        <th>آخر تسجيل</th>
+                        <th>إجمالي المدفوع</th>
+                        <th>عدد الحركات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students_list %}
+                    <tr>
+                        <td>{{ forloop.counter0|add:students.start_index }}</td>
+                        <td class="fw-bold">{{ student.name }}</td>
+                        <td>
+                            {% if student.courses %}
+                                {% for course in student.courses %}
+                                <span class="badge bg-light text-dark border me-1">
+                                    <i class="fas fa-book-open me-1"></i> {{ course.name }}
+                                </span>
+                                {% endfor %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for branch in student.branches %}
+                                <span class="badge bg-secondary">{{ branch.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ student.last_date|date:"Y-m-d" }}</td>
+                        <td class="fw-bold text-success">{{ student.total|floatformat:2 }}</td>
+                        <td><span class="badge bg-info">{{ student.count }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p>لا يوجد طلاب مسجلين</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% if students.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if students.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link shadow-sm" href="?page={{ students.previous_page_number }}{% if search %}&q={{ search }}{% endif %}{% if course_id %}&course={{ course_id }}{% endif %}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo; السابق</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">السابق</span></li>
+                    {% endif %}
+
+                    {% for i in students.paginator.page_range %}
+                        {% if students.number == i %}
+                        <li class="page-item active shadow-sm" aria-current="page">
+                            <span class="page-link">{{ i }}</span>
+                        </li>
+                        {% elif i > students.number|add:'-3' and i < students.number|add:'3' %}
+                        <li class="page-item"><a class="page-link" href="?page={{ i }}{% if search %}&q={{ search }}{% endif %}{% if course_id %}&course={{ course_id }}{% endif %}">{{ i }}</a></li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if students.has_next %}
+                    <li class="page-item">
+                        <a class="page-link shadow-sm" href="?page={{ students.next_page_number }}{% if search %}&q={{ search }}{% endif %}{% if course_id %}&course={{ course_id }}{% endif %}" aria-label="Next">
+                            <span aria-hidden="true">التالي &raquo;</span>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled"><span class="page-link">التالي</span></li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <div class="text-center text-muted small mt-2">
+                عرض الصفحة {{ students.number }} من أصل {{ students.paginator.num_pages }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

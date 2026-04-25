@@ -17,6 +17,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-money-bill-wave"></i> الإيرادات</h2>
 
+
     <a href="{% url 'transactions:excel_style_transaction' %}" class="btn btn-success">
         <i class="fas fa-table"></i> تسجيل سريع (Excel)
     </a>
@@ -34,7 +35,8 @@
                         <th>#</th>
                         <th>التاريخ</th>
                         <th>الاسم / الجهة</th>
-                        <th>ملاحظات</th>
+                        <th>الهوية</th>
+                        <th>الدورة</th>
                         <th>نوع الإيراد</th>
                         <th>المبلغ</th>
                         <th>طريقة الدفع</th>
@@ -46,10 +48,11 @@
                 <tbody>
                     {% for income in incomes %}
                     <tr>
-                        <td>{{ forloop.counter }}</td>
+                        <td>{{ forloop.counter0|add:incomes.start_index }}</td>
                         <td>{{ income.date|date:"Y-m-d" }}</td>
                         <td>{{ income.party_name|default:"غير محدد" }}</td>
-                        <td>{{ income.notes|truncatechars:30|default:"-" }}</td>
+                        <td>{{ income.id_number|default:"-" }}</td>
+                        <td>{{ income.course.name|default:"-" }}</td>
                         <td>
                             <span class="badge {% if income.income_type == 'registration' %}bg-success{% else %}bg-info{% endif %}">
                                 {{ income.get_income_type_display }}
@@ -67,7 +70,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                             <p>لا يوجد إيرادات مسجلة</p>
                         </td>

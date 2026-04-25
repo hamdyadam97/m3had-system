@@ -119,7 +119,7 @@
                                 {% for day in top_days %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ day.day|date:"Y-m-d" }}</td>
+                                    <td>{{ day.date|date:"Y-m-d" }}</td>
                                     <td class="text-center">{{ day.count }}</td>
                                     <td class="text-center">{{ day.total|floatformat:0 }} ر.س</td>
                                 </tr>
@@ -160,7 +160,7 @@
                                 {% for day in top_income_days %}
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
-                                    <td>{{ day.day|date:"Y-m-d" }}</td>
+                                    <td>{{ day.date|date:"Y-m-d" }}</td>
                                     <td class="text-center">
                                         <span class="badge bg-primary">{{ day.total|floatformat:0 }} ر.س</span>
                                     </td>

@@ -32,6 +32,14 @@
                             <span class="fw-bold fs-5">{{ income.party_name|default:"غير محدد" }}</span>
                         </div>
                         <div class="col-md-6">
+                            <label class="text-muted small d-block">رقم الهوية / الملف</label>
+                            <span class="fw-bold fs-5">{{ income.id_number|default:"-" }}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="text-muted small d-block">الدورة / الدبلومة</label>
+                            <span class="fw-bold fs-5">{{ income.course.name|default:"-" }}</span>
+                        </div>
+                        <div class="col-md-6">
                             <label class="text-muted small d-block">ملاحظات</label>
                             <span class="fw-bold fs-5 text-primary">{{ income.notes|default:"-" }}</span>
                         </div>

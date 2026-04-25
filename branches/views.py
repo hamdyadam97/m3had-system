@@ -1,4 +1,5 @@
 from django import forms
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import  get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
@@ -35,37 +36,34 @@ def branch_detail(request, pk):
 
 @login_required
 def branch_add(request):
-    # السماح فقط للمديرين بإضافة فروع
     if not (request.user.is_superuser or request.user.user_type == 'admin'):
-        from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 
     if request.method == 'POST':
         form = BranchForm(request.POST)
-        action = request.POST.get('action')  # استلام قيمة الزر المضغوط من الـ Modal
+        action = request.POST.get('action')
 
         if form.is_valid():
             branch = form.save()
             messages.success(request, 'تم إنشاء الفرع بنجاح!')
 
-            # إذا كان الضغط على زر "حفظ وإضافة آخر"
             if action == 'add_another':
-                # بنرجعه لصفحة القائمة مع بارامتر يخلي الـ Modal يفتح تلقائياً
-                return redirect(request.META.get('HTTP_REFERER', 'branches:branch_list') + '?open_modal=true')
+                return redirect(f"{reverse('branches:branch_list')}?open_modal=true")
 
-            # الحالة الطبيعية: حفظ وخروج
             return redirect(
-                f"{reverse('branches:branch_list')}?open_target_modal=true&branch_id={branch.id}&branch_name={branch.name}")
+                f"{reverse('branches:branch_list')}?open_target_modal=true&branch_id={branch.id}&branch_name={branch.name}"
+            )
         else:
-            # في حال وجود أخطاء والـ Modal مفتوح، يفضل إرسال رسالة خطأ واضحة
+            # ❌ ما تعملش redirect - رجّع render الصفحة الرئيسية
             messages.error(request, 'يرجى تصحيح الأخطاء أدناه.')
-            # هنا بنرجعه للقائمة عشان يفتح الـ Modal ويشوف الأخطاء (أو يفضل استخدام AJAX مستقبلاً)
-            return redirect('branches:branch_list')
 
-    # في حالة الـ GET (لو دخل على الرابط مباشرة مش عن طريق الـ Modal)
-    form = BranchForm()
-    return render(request, 'branches/branch_form.html', {'form': form, 'title': 'إضافة فرع جديد'})
+            # هنا بنرجع لـ branch_list مع الفورم فيه الأخطاء
+            # لازم تكون جايب branch_list context كمان (branches, search, etc.)
+            from .views import branch_list  # أو استورد الدالة الرئيسية
+            return branch_list(request, branch_form=form, open_modal=True)
 
+    # GET
+    return redirect('branches:branch_list')
 
 @login_required
 def branch_edit(request, pk):

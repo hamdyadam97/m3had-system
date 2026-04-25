@@ -18,7 +18,7 @@
         </button>
     </div>
     <div class="card-body">
-        <form method="post" id="excelExpenseForm" autocomplete="off">
+        <form method="post" id="excelExpenseForm" autocomplete="off" enctype="multipart/form-data">
             {% csrf_token %}
             {{ formset.management_form }}
 
@@ -33,6 +33,7 @@
                             <th>التاريخ *</th>
                             <th>الفرع *</th>
                             <th>رقم الإيصال</th>
+                            <th>صورة الإيصال</th>
                             <th>ملاحظات</th>
                             <th style="width: 50px;"></th>
                         </tr>
@@ -47,6 +48,7 @@
                             <td>{{ form.date }}</td>
                             <td>{{ form.branch }}</td>
                             <td>{{ form.receipt_number }}</td>
+                            <td>{{ form.receipt_image }}</td>
                             <td>{{ form.notes }}</td>
                             <td class="text-center">
                                 <button type="button" class="btn btn-sm btn-outline-danger remove-row" onclick="removeRow(this)">
@@ -126,6 +128,9 @@ function addRow() {
         if (input.type === 'date') {
             input.value = new Date().toISOString().split('T')[0];
         }
+        if (input.type === 'file') {
+            input.value = '';
+        }
         updateElementIndex(input, 'form', rowCount);
     });
 
@@ -154,6 +159,9 @@ function removeRow(button) {
             input.value = '';
             if (input.type === 'date') {
                 input.value = new Date().toISOString().split('T')[0];
+            }
+            if (input.type === 'file') {
+                input.value = '';
             }
         });
         row.querySelectorAll('select').forEach(function(select) {
@@ -188,6 +196,9 @@ function resetForm() {
                 input.value = '';
                 if (input.type === 'date') {
                     input.value = new Date().toISOString().split('T')[0];
+                }
+                if (input.type === 'file') {
+                    input.value = '';
                 }
             });
             row.querySelectorAll('select').forEach(function(select) {

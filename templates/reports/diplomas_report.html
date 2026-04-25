@@ -187,7 +187,7 @@
                                     <td class="text-center">{{ diploma.total_income|default:0|floatformat:0 }} ر.س</td>
                                     <td class="text-center">
                                         {% if diploma.students_count > 0 %}
-                                            {{ diploma.total_income|default:0|div:diploma.students_count|floatformat:0 }} ر.س
+                                            {% widthratio diploma.total_income|default:0 diploma.students_count 1 %} ر.س
                                         {% else %}
                                             -
                                         {% endif %}

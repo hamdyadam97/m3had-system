@@ -2,10 +2,81 @@
 
 {% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* وضع ملء الشاشة للتسجيل السريع */
+    .excel-fullscreen #main-sidebar { display: none !important; }
+    .excel-fullscreen #main-content {
+        width: 100% !important;
+        flex: 0 0 auto !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 10px !important;
+    }
+    .excel-fullscreen .container-fluid > .row { margin: 0 !important; }
+
+    /* تصغير حجم الحقول */
+    #transaction-table .form-control,
+    #transaction-table .form-select {
+        min-width: 90px;
+        font-size: 0.85rem;
+        padding: 0.25rem 0.4rem;
+        height: auto;
+    }
+    /* أعمدة محددة */
+    #transaction-table th:nth-child(1) { width: 30px; min-width: 30px; }
+    #transaction-table th:nth-child(2) { min-width: 160px; }  /* الاسم */
+    #transaction-table th:nth-child(3) { min-width: 90px; }   /* الهوية */
+    #transaction-table th:nth-child(4) { min-width: 90px; }   /* طريقة الدفع */
+    #transaction-table th:nth-child(5) { min-width: 90px; }   /* المبلغ */
+    #transaction-table th:nth-child(6) { min-width: 120px; }  /* التاريخ */
+    #transaction-table th:nth-child(7) { min-width: 120px; }  /* تاريخ التسجيل */
+    #transaction-table th:nth-child(8) { min-width: 100px; }  /* النوع */
+    #transaction-table th:nth-child(9) { min-width: 120px; }  /* الفرع */
+    #transaction-table th:nth-child(10){ min-width: 130px; }  /* الدورة */
+    #transaction-table th:nth-child(11){ min-width: 90px; }   /* المدينة */
+    #transaction-table th:nth-child(12){ min-width: 130px; }  /* المحصل */
+    #transaction-table th:nth-child(13){ min-width: 100px; }  /* رقم العملية */
+    #transaction-table th:nth-child(14){ min-width: 130px; }  /* ملاحظات */
+    #transaction-table th:nth-child(15){ width: 40px; min-width: 40px; }
+
+    /* sticky header */
+    #transaction-table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8f9fa;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        font-size: 0.8rem;
+        white-space: nowrap;
+        padding: 6px 4px;
+    }
+    #transaction-table td {
+        padding: 4px;
+        vertical-align: middle;
+    }
+    #transaction-table tbody td .form-control,
+    #transaction-table tbody td .form-select {
+        min-height: 32px;
+    }
+
+    /* Horizontal scroll smooth */
+    .table-responsive {
+        overflow-x: auto;
+        max-height: calc(100vh - 220px);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="fas fa-table text-success"></i> {{ title }}</h2>
-    <a href="{% url 'transactions:income_list' %}" class="btn btn-secondary">
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <div class="d-flex align-items-center gap-2">
+        <h4 class="mb-0"><i class="fas fa-table text-success"></i> {{ title }}</h4>
+        <button type="button" class="btn btn-outline-dark btn-sm" onclick="toggleSidebar()" id="sidebarToggleBtn">
+            <i class="fas fa-columns"></i> <span>إخفاء القائمة</span>
+        </button>
+    </div>
+    <a href="{% url 'transactions:income_list' %}" class="btn btn-secondary btn-sm">
         <i class="fas fa-arrow-right"></i> رجوع للإيرادات
     </a>
 </div>
@@ -43,12 +114,18 @@
         </button>
     </div>
     <div class="card-body">
+        <div class="alert alert-light border mb-2 py-2">
+            <small class="text-muted">
+                <i class="fas fa-info-circle text-success"></i>
+                <strong>ملاحظة:</strong> المحصل <strong>مطلوب</strong> في التسجيل الجديد (رسوم تسجيل / كامل / كامل رسوم) و<strong>اختياري</strong> في الدفعات.
+            </small>
+        </div>
         <form method="post" id="excelTransactionForm" autocomplete="off">
             {% csrf_token %}
             {{ formset.management_form }}
 
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle" id="transaction-table">
+                <table class="table table-bordered table-hover align-middle table-sm" id="transaction-table">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 40px;">#</th>
@@ -62,7 +139,7 @@
                             <th>الفرع *</th>
                             <th>الدورة</th>
                             <th>المدينة</th>
-                            <th>المحصل</th>
+                            <th>المحصل *</th>
                             <th>رقم العملية</th>
                             <th>ملاحظات</th>
                             <th style="width: 50px;"></th>
@@ -248,7 +325,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     updateRowNumbers();
+
+    // التحقق من وضع الشاشة المحفوظ
+    if (localStorage.getItem('excel_fullscreen') === 'true') {
+        document.body.classList.add('excel-fullscreen');
+        updateToggleBtn(true);
+    }
 });
+
+function toggleSidebar() {
+    const isFullscreen = document.body.classList.toggle('excel-fullscreen');
+    localStorage.setItem('excel_fullscreen', isFullscreen);
+    updateToggleBtn(isFullscreen);
+}
+
+function updateToggleBtn(isFullscreen) {
+    const btn = document.getElementById('sidebarToggleBtn');
+    if (!btn) return;
+    const span = btn.querySelector('span');
+    if (isFullscreen) {
+        btn.classList.remove('btn-outline-dark');
+        btn.classList.add('btn-dark');
+        if (span) span.textContent = 'إظهار القائمة';
+    } else {
+        btn.classList.remove('btn-dark');
+        btn.classList.add('btn-outline-dark');
+        if (span) span.textContent = 'إخفاء القائمة';
+    }
+}
 
 function getTotalForms() {
     return document.getElementById('id_form-TOTAL_FORMS');
