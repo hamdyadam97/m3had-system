@@ -380,18 +380,19 @@ def excel_import(request):
                         'title': 'استيراد من Excel',
                     })
 
-                # تقدير افتراضي للـ mapping
+                # تقدير افتراضي للـ mapping (حسب ملف Excel المعتمد)
                 initial_mapping = {
                     'party_name': 0,
                     'id_number': 1,
                     'payment_method': 2,
-                    'amount': 4,
-                    'date': 5,
-                    'transaction_type': 7,
-                    'city': 8,
-                    'collector_name': 9,
-                    'transaction_number': 10,
-                    'course': 11,
+                    'amount': 3,
+                    'date': 4,
+                    'transaction_type': 6,
+                    'city': 9,
+                    'collector_name': 10,
+                    'transaction_number': 11,
+                    'course': 8,
+                    'notes': 12,
                 }
 
                 mapping_form = ExcelMappingForm(initial={
@@ -432,12 +433,22 @@ def excel_import(request):
                     messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
                     return redirect('transactions:excel_import')
 
-                # تشغيل الاستيراد في الخلفية (Celery)
-                from .tasks import import_income_excel_task
-                task = import_income_excel_task.delay(temp_path, mapping, branch.id, request.user.id)
-                request.session['last_import_task_id'] = task.id
-                messages.info(request, 'جاري استيراد الملف في الخلفية... يمكنك متابعة عملك وسيظهر الإشعار عند الانتهاء.')
-                return redirect('transactions:import_task_status', task_id=task.id)
+                try:
+                    imported, errors = import_excel_data(temp_path, mapping, branch, request.user)
+                    if imported > 0:
+                        messages.success(request, f'تم استيراد {imported} حركة مالية بنجاح!')
+                    if errors:
+                        for err in errors:
+                            messages.warning(request, err)
+                except Exception as e:
+                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                finally:
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+
+                return redirect('transactions:income_list')
     else:
         form = ExcelImportForm(user=request.user)
 
@@ -588,12 +599,22 @@ def excel_import_expense(request):
                     messages.error(request, 'الملف المؤقت غير موجود، يرجى إعادة رفع الملف.')
                     return redirect('transactions:excel_import_expense')
 
-                # تشغيل الاستيراد في الخلفية (Celery)
-                from .tasks import import_expense_excel_task
-                task = import_expense_excel_task.delay(temp_path, mapping, branch.id, request.user.id)
-                request.session['last_import_task_id'] = task.id
-                messages.info(request, 'جاري استيراد المصروفات في الخلفية... يمكنك متابعة عملك.')
-                return redirect('transactions:import_task_status', task_id=task.id)
+                try:
+                    imported, errors = import_excel_expense_data(temp_path, mapping, branch, request.user)
+                    if imported > 0:
+                        messages.success(request, f'تم استيراد {imported} مصروف بنجاح!')
+                    if errors:
+                        for err in errors:
+                            messages.warning(request, err)
+                except Exception as e:
+                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                finally:
+                    try:
+                        os.remove(temp_path)
+                    except:
+                        pass
+
+                return redirect('transactions:expense_list')
     else:
         form = ExcelExpenseImportForm(user=request.user)
 
