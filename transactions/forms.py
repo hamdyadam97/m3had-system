@@ -343,12 +343,9 @@ class ExcelStyleTransactionForm(forms.Form):
     """نموذج تسجيل حركة مالية بنفس أسلوب ملف الـ Excel (بدون تسجيل طلاب)"""
 
     TRANSACTION_TYPE_CHOICES = [
-        ('registration', 'رسوم تسجيل'),
+        ('registration', 'تسجيل'),
         ('installment', 'دفعه'),
-        ('full_payment', 'كامل'),
-        ('full_fees', 'كامل رسوم'),
-        ('registration_fees', 'رسوم التسجيل'),
-        ('last_installment', 'اخر دفعه'),
+
     ]
 
     PAYMENT_METHOD_CHOICES = [

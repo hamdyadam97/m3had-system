@@ -233,7 +233,7 @@ def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST)
         if form.is_valid():
-            user =form.save()
+            user = form.save()
             group_name = ""
             if user.user_type == 'employee':
                 group_name = "Emp"
@@ -247,14 +247,26 @@ def user_create(request):
                 group_name = "regional_manager"
             if group_name:
                 group, created = Group.objects.get_or_create(name=group_name)
-                user.groups.add(group)  # إضافة المستخدم للمجموعة فوراً
+                user.groups.add(group)
 
+            # لو AJAX: رد JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'تم إنشاء المستخدم بنجاح.'})
             messages.success(request, 'تم إنشاء المستخدم وربطه بصلاحياته تلقائياً.')
             return redirect('accounts:user_list')
-
-    else:
-        form = UserCreateForm()
-    return render(request, 'accounts/user_form.html', {'form': form, 'title': 'إضافة مستخدم جديد'})
+        else:
+            # لو AJAX: رد الأخطاء JSON
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': dict(form.errors)})
+            # لو مش AJAX: رسائل خطأ وredirect
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        messages.error(request, f"{form.fields[field].label or field}: {error}")
+            return redirect('accounts:user_list')
+    return redirect('accounts:user_list')
 
 
 @login_required
@@ -262,20 +274,24 @@ def user_create(request):
 def user_edit(request, pk):
     user_obj = get_object_or_404(User, pk=pk)
     if request.method == 'POST':
-        form = UserUpdateForm(request.POST, instance=user_obj)  # هنا صح
+        form = UserUpdateForm(request.POST, instance=user_obj)
         if form.is_valid():
             form.save()
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': True, 'message': 'تم تحديث بيانات المستخدم.'})
             messages.success(request, 'تم تحديث بيانات المستخدم.')
             return redirect('accounts:user_list')
-    else:
-        # التعديل هنا: استخدم UserUpdateForm بدلاً من UserCreateForm
-        form = UserUpdateForm(instance=user_obj)
-
-    return render(request, 'accounts/user_form.html', {
-        'form': form,
-        'title': 'تعديل مستخدم',
-        'user_obj': user_obj
-    })
+        else:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'errors': dict(form.errors)})
+            for field, errors in form.errors.items():
+                for error in errors:
+                    if field == '__all__':
+                        messages.error(request, error)
+                    else:
+                        messages.error(request, f"{form.fields[field].label or field}: {error}")
+            return redirect('accounts:user_list')
+    return redirect('accounts:user_list')
 
 # 4. تفعيل / تعطيل مستخدم (Soft Toggle)
 @login_required

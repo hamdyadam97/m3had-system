@@ -191,18 +191,51 @@
         </div>
     </div>
 </div>
-{% include 'accounts/user_form.html' %}
+{% include 'accounts/user_form_modal.html' %}
 
 <script>
-    // تعريف المتغيرات في نطاق عام (Global) ليراها الزرار
     let userModal;
     let userForm;
     let modalTitle;
     let passwordFields;
     let statusField;
+    let modalErrorsDiv;
+
+    function clearModalErrors() {
+        modalErrorsDiv.classList.add('d-none');
+        modalErrorsDiv.innerHTML = '';
+        userForm.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+        userForm.querySelectorAll('.invalid-feedback').forEach(el => el.remove());
+    }
+
+    function showFieldError(fieldName, messages) {
+        const input = userForm.querySelector(`[name="${fieldName}"]`);
+        if (!input) return;
+        input.classList.add('is-invalid');
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback d-block';
+        feedback.textContent = messages.join(' ');
+        input.parentNode.appendChild(feedback);
+    }
+
+    function showModalErrors(errors) {
+        let hasNonField = false;
+        let html = '';
+        for (const [field, msgs] of Object.entries(errors)) {
+            if (field === '__all__') {
+                hasNonField = true;
+                html += '<div>' + msgs.join('<br>') + '</div>';
+            } else {
+                showFieldError(field, msgs);
+            }
+        }
+        if (hasNonField) {
+            modalErrorsDiv.innerHTML = html;
+            modalErrorsDiv.classList.remove('d-none');
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // التأكد من أن Bootstrap محمل قبل البدء
         if (typeof bootstrap !== 'undefined') {
             const modalElement = document.getElementById('userModal');
             if (modalElement) {
@@ -211,17 +244,54 @@
                 modalTitle = document.getElementById('modalTitleText');
                 passwordFields = document.getElementById('passwordFields');
                 statusField = document.getElementById('statusField');
+                modalErrorsDiv = document.getElementById('modalFormErrors');
+
+                // AJAX submit
+                userForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    clearModalErrors();
+
+                    const formData = new FormData(userForm);
+                    fetch(userForm.action, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
+                    })
+                    .then(async r => {
+                        const text = await r.text();
+                        try { return JSON.parse(text); }
+                        catch (e) {
+                            console.error('Response is not JSON:', text.substring(0, 500));
+                            throw new Error('Invalid JSON response');
+                        }
+                    })
+                    .then(data => {
+                        console.log('Server response:', data);
+                        if (data.success) {
+                            window.location.reload();
+                        } else {
+                            showModalErrors(data.errors);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('AJAX Error:', err);
+                        modalErrorsDiv.textContent = 'حدث خطأ غير متوقع، حاول مرة أخرى.';
+                        modalErrorsDiv.classList.remove('d-none');
+                    });
+                });
             }
         } else {
             console.error("Bootstrap is not loaded!");
         }
     });
 
-    // دالة فتح مودال الإضافة
     function openAddUserModal() {
-        if (!userForm) return; // حماية في حالة لم يحمل الفورم بعد
+        if (!userForm) return;
         userForm.reset();
-        // تأكد من الـ URL الصحيح حسب ملف الـ urls.py عندك
+        clearModalErrors();
         userForm.action = "{% url 'accounts:user_create' %}";
         modalTitle.innerText = "إضافة موظف جديد";
         if (passwordFields) passwordFields.classList.remove('d-none');
@@ -229,15 +299,13 @@
         userModal.show();
     }
 
-    // دالة فتح مودال التعديل
     function openEditUserModal(id, username, fname, lname, email, phone, type, branch, active) {
         if (!userForm) return;
         userForm.reset();
-        // تعديل الـ Action ليرسل إلى دالة الـ Edit
-        userForm.action = "/accounts/edit/" + id + "/";
+        clearModalErrors();
+        userForm.action = "/accounts/" + id + "/edit/";
         modalTitle.innerText = `تعديل الموظف: ${username}`;
 
-        // تعبئة البيانات بحذر
         try {
             document.getElementsByName('username')[0].value = username;
             document.getElementsByName('first_name')[0].value = fname;

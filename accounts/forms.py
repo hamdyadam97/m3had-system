@@ -134,6 +134,10 @@ class UserCreateForm(forms.ModelForm):
         label='تأكيد كلمة المرور',
         widget=forms.PasswordInput(attrs={'class': 'form-control'})
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['user_type'].initial = 'employee'
     
     class Meta:
         model = User
