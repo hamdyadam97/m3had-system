@@ -359,6 +359,25 @@ def export_users_pdf(request):
 
 
 @login_required
+def download_staff_template(request):
+    """تحميل نموذج ملف Excel لاستيراد الموظفين"""
+    import os
+    from django.conf import settings
+
+    file_path = os.path.join(settings.BASE_DIR, 'staff_import_template.xlsx')
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(
+                f.read(),
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+            response['Content-Disposition'] = 'attachment; filename="staff_import_template.xlsx"'
+            return response
+    messages.error(request, 'ملف النموذج غير موجود.')
+    return redirect('accounts:user_list')
+
+
+@login_required
 def import_users_excel(request):
     if not (request.user.is_superuser or request.user.user_type == 'admin'):
         from django.core.exceptions import PermissionDenied

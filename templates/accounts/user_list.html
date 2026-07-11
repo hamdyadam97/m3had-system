@@ -9,6 +9,10 @@
 
     <div class="d-flex gap-2">
         <div class="btn-group shadow-sm">
+            <a href="{% url 'accounts:download_staff_template' %}" class="btn btn-outline-secondary" title="تحميل نموذج الاستيراد">
+                <i class="fas fa-download"></i> نموذج الاستيراد
+            </a>
+
             <button type="button" class="btn btn-outline-info" onclick="document.getElementById('userExcelInput').click()" title="استيراد من اكسل">
                 <i class="fas fa-file-import"></i> استيراد
             </button>

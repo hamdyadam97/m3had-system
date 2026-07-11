@@ -255,15 +255,15 @@ from django.db import transaction
 def excel_style_transaction(request):
     """تسجيل مجموعة حركات مالية بنفس أسلوب ملف الـ Excel"""
     if request.method == 'POST':
-        print("=" * 50)
-        print("POST Data Received")
-        print("=" * 50)
+        logger.info("=" * 50)
+        logger.info("POST Data Received")
+        logger.info("=" * 50)
 
         formset = ExcelStyleTransactionFormSet(request.POST, user=request.user)
-        print(f"Total Forms Submitted: {request.POST.get('form-TOTAL_FORMS')}")
+        logger.info("Total Forms Submitted: %s", request.POST.get('form-TOTAL_FORMS'))
 
         if formset.is_valid():
-            print("Formset IS VALID - Processing save...")
+            logger.info("Formset IS VALID - Processing save...")
             with transaction.atomic():
                 count = 0
                 for form in formset:
@@ -314,18 +314,18 @@ def excel_style_transaction(request):
                 )
                 return redirect('transactions:excel_style_transaction')
         else:
-            # 🔴 هنا بنطبع كل الأخطاء في الـ Console
-            print("\n" + "❌ FORMSSET NOT VALID!" + "\n")
-            print("Non-form errors:", formset.non_form_errors())
-            print("\n--- Errors per form ---")
+            # 🔴 هنا بنطبع كل الأخطاء في الـ Logs
+            logger.warning("\n" + "❌ FORMSSET NOT VALID!" + "\n")
+            logger.warning("Non-form errors: %s", formset.non_form_errors())
+            logger.warning("\n--- Errors per form ---")
             for i, form in enumerate(formset):
                 if form.errors:
-                    print(f"\nForm [{i}] errors:")
+                    logger.warning("\nForm [%s] errors:", i)
                     for field, errors in form.errors.items():
-                        print(f"  Field '{field}': {errors}")
+                        logger.warning("  Field '%s': %s", field, errors)
                 if form.non_field_errors():
-                    print(f"  Non-field errors: {form.non_field_errors()}")
-            print("\n" + "=" * 50 + "\n")
+                    logger.warning("  Non-field errors: %s", form.non_field_errors())
+            logger.warning("\n" + "=" * 50 + "\n")
 
             # 🔴 نبعت رسالة للمستخدم في الـ Frontend
             messages.error(request, 'يوجد أخطاء في البيانات المدخلة، يرجى مراجعة الحقول المطلوبة (باللون الأحمر)')

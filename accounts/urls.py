@@ -67,5 +67,6 @@ urlpatterns = [
     path('export/users/excel/', views.export_users_excel, name='export_users_excel'),
     path('export/users/pdf/', views.export_users_pdf, name='export_users_pdf'),
     path('import/users/excel/', views.import_users_excel, name='import_users_excel'),
+    path('import/users/template/', views.download_staff_template, name='download_staff_template'),
     
 ]
