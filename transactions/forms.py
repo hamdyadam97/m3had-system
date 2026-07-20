@@ -549,6 +549,7 @@ class ExcelImportForm(forms.Form):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
@@ -750,6 +751,7 @@ class ExcelExpenseImportForm(forms.Form):
 
     def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.user = user
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
