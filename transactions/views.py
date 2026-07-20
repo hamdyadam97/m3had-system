@@ -19,7 +19,6 @@ from .forms import (
 )
 from django.core.paginator import Paginator
 @login_required
-@permission_required('transactions.view_income', raise_exception=True)
 def income_list(request):
     """قائمة الإيرادات مع التقسيم وفلترة الفروع حسب نوع المستخدم"""
 
@@ -56,7 +55,6 @@ def income_list(request):
 
 
 @login_required
-@permission_required('transactions.view_income', raise_exception=True)
 def student_list(request):
     """قائمة الطلاب المسجلين مع الدورات/الدبلومات (مجمعة بالاسم)"""
 
@@ -142,7 +140,6 @@ def student_list(request):
 
 
 @login_required
-@permission_required('transactions.view_income', raise_exception=True)
 def income_detail(request, pk):
     """تفاصيل الإيراد مع حماية الخصوصية"""
     income = get_object_or_404(Income, pk=pk)
@@ -180,7 +177,6 @@ def income_add(request):
 
 
 @login_required
-@permission_required('transactions.view_expense', raise_exception=True)
 def expense_list(request):
     """قائمة المصروفات بفلترة ذكية"""
     user = request.user
@@ -209,7 +205,6 @@ def expense_detail(request, pk):
 
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def daily_summary(request):
     """ملخص مالي يومي حسب الفروع المتاحة للمستخدم"""
     user = request.user
