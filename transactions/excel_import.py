@@ -1,6 +1,7 @@
 import os
 import tempfile
 import pandas as pd
+import logging
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.utils import timezone
@@ -8,7 +9,7 @@ from django.db.models import Q
 from django.db import transaction
 from datetime import datetime
 
-
+logger = logging.getLogger(__name__)
 def parse_excel_preview(file_path, sheet_name=0):
     """قراءة كل صفوف ملف Excel لعرض preview"""
     try:
@@ -316,7 +317,10 @@ def import_excel_data(file_path, mapping, branch, user):
     # --- حفظ دفعة واحدة (أسرع بكثير) ---
     if income_objects:
         with transaction.atomic():
-            Income.objects.bulk_create(income_objects, batch_size=500)
+            created = Income.objects.bulk_create(income_objects, batch_size=500)
+            logger.info(f"[Excel Import] User={user} | Branch={branch} | Prepared={len(income_objects)} | Created={len(created)}")
+    else:
+        logger.info(f"[Excel Import] User={user} | Branch={branch} | No valid rows to import")
 
     return imported, errors
 
@@ -411,6 +415,9 @@ def import_excel_expense_data(file_path, mapping, branch, user):
 
     if expense_objects:
         with transaction.atomic():
-            Expense.objects.bulk_create(expense_objects, batch_size=500)
+            created = Expense.objects.bulk_create(expense_objects, batch_size=500)
+            logger.info(f"[Excel Expense Import] User={user} | Branch={branch} | Prepared={len(expense_objects)} | Created={len(created)}")
+    else:
+        logger.info(f"[Excel Expense Import] User={user} | Branch={branch} | No valid rows to import")
 
     return imported, errors

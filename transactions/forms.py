@@ -565,6 +565,21 @@ class ExcelImportForm(forms.Form):
                 raise forms.ValidationError('يجب رفع ملف Excel بصيغة .xlsx أو .xls')
         return file
 
+    def clean_branch(self):
+        """التحقق من أن المستخدم يمكنه الاستيراد للفرع المختار"""
+        branch = self.cleaned_data.get('branch')
+        user = self.user
+        if not branch:
+            raise forms.ValidationError('يجب اختيار الفرع')
+        if user:
+            if user.is_superuser or user.user_type == 'admin':
+                return branch
+            if user.user_type == 'regional_manager' and branch not in user.managed_branches.all():
+                raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع خارج نطاق إدارتك')
+            if user.branch and branch.id != user.branch_id:
+                raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع آخر')
+        return branch
+
 
 class ExcelMappingForm(forms.Form):
     """نموذج ربط أعمدة Excel بالحقول"""
@@ -750,6 +765,21 @@ class ExcelExpenseImportForm(forms.Form):
             if ext not in ('.xlsx', '.xls'):
                 raise forms.ValidationError('يجب رفع ملف Excel بصيغة .xlsx أو .xls')
         return file
+
+    def clean_branch(self):
+        """التحقق من أن المستخدم يمكنه الاستيراد للفرع المختار"""
+        branch = self.cleaned_data.get('branch')
+        user = self.user
+        if not branch:
+            raise forms.ValidationError('يجب اختيار الفرع')
+        if user:
+            if user.is_superuser or user.user_type == 'admin':
+                return branch
+            if user.user_type == 'regional_manager' and branch not in user.managed_branches.all():
+                raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع خارج نطاق إدارتك')
+            if user.branch and branch.id != user.branch_id:
+                raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع آخر')
+        return branch
 
 
 class ExcelExpenseMappingForm(forms.Form):
