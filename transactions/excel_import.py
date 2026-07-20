@@ -225,15 +225,15 @@ def import_excel_data(file_path, mapping, branch, user):
             if date_val is None:
                 date_val = timezone.now().date()
 
-            # نوع العملية
+            # نوع العملية: أي حاجة غير "تسجيل" تبقى قسط
             tx_type = ''
             if mapping.get('transaction_type') is not None:
                 tx_type = str(values[mapping['transaction_type']]).strip()
 
-            if 'دفعه' in tx_type or 'دفعة' in tx_type or 'اخر' in tx_type:
-                income_type = 'installment'
-            else:
+            if 'تسجيل' in tx_type:
                 income_type = 'registration'
+            else:
+                income_type = 'installment'
 
             # طريقة الدفع
             payment_method = 'mada'
