@@ -47,6 +47,97 @@
         <li>التواريخ بصيغة يوم/شهر/سنة مثال: 20/04/2026</li>
     </ul>
 </div>
+
+<div class="card mt-3">
+    <div class="card-header bg-light">
+        <i class="fas fa-table"></i> شكل ملف Excel المتوقع (بدون عنوان)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>العمود / الحقل</th>
+                        <th>النوع / الشكل</th>
+                        <th>مثال</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0</td>
+                        <td>اسم الطالب / الجهة <span class="text-danger">*</span></td>
+                        <td>نص</td>
+                        <td>أحمد محمد</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>رقم الهوية / الملف</td>
+                        <td>نص (اختياري)</td>
+                        <td>1234567890</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>طريقة الدفع</td>
+                        <td>نص (اختياري)</td>
+                        <td>مدى / فيزا / ماستر / تحويل بنكي</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>المبلغ <span class="text-danger">*</span></td>
+                        <td>رقم</td>
+                        <td>1500</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>التاريخ <span class="text-danger">*</span></td>
+                        <td>يوم/شهر/سنة</td>
+                        <td>20/04/2026</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>نوع العملية</td>
+                        <td>نص (اختياري)</td>
+                        <td>تسجيل / دفعة / دفعه</td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td>الدورة / الدبلومة</td>
+                        <td>نص (يجب أن تكون مسجلة في النظام)</td>
+                        <td>برمجة</td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td>المدينة</td>
+                        <td>نص (اختياري)</td>
+                        <td>الرياض</td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td>اسم المحصل</td>
+                        <td>نص (اختياري)</td>
+                        <td>محمد علي</td>
+                    </tr>
+                    <tr>
+                        <td>11</td>
+                        <td>رقم العملية</td>
+                        <td>نص (اختياري)</td>
+                        <td>TX-001</td>
+                    </tr>
+                    <tr>
+                        <td>12</td>
+                        <td>ملاحظات</td>
+                        <td>نص (اختياري)</td>
+                        <td>دفعة أولى</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="p-2 text-muted small">
+            <span class="text-danger">*</span> حقول إلزامية. الأعمدة الاختيارية يمكن إغفالها أو إدخالها حسب الحاجة.
+        </div>
+    </div>
+</div>
 {% endif %}
 
 {% if step == 'mapping' %}

@@ -48,6 +48,67 @@
         <li>الفئات المعروفة: رواتب، إيجار، مرافق، مستلزمات، تسويق، صيانة، أخرى</li>
     </ul>
 </div>
+
+<div class="card mt-3">
+    <div class="card-header bg-light">
+        <i class="fas fa-table"></i> شكل ملف Excel المتوقع (بدون عنوان)
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>العمود / الحقل</th>
+                        <th>النوع / الشكل</th>
+                        <th>مثال</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0</td>
+                        <td>البيان / الوصف <span class="text-danger">*</span></td>
+                        <td>نص</td>
+                        <td>إيجار شهر يناير</td>
+                    </tr>
+                    <tr>
+                        <td>1</td>
+                        <td>الفئة</td>
+                        <td>نص (اختياري)</td>
+                        <td>رواتب / إيجار / مرافق / مستلزمات / تسويق / صيانة / أخرى</td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td>المبلغ <span class="text-danger">*</span></td>
+                        <td>رقم</td>
+                        <td>2500</td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td>التاريخ <span class="text-danger">*</span></td>
+                        <td>يوم/شهر/سنة</td>
+                        <td>20/04/2026</td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td>رقم السند</td>
+                        <td>نص (اختياري)</td>
+                        <td>R-123</td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td>ملاحظات</td>
+                        <td>نص (اختياري)</td>
+                        <td>سداد شهري</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="p-2 text-muted small">
+            <span class="text-danger">*</span> حقول إلزامية. الأعمدة الاختيارية يمكن إغفالها أو إدخالها حسب الحاجة.
+        </div>
+    </div>
+</div>
 {% endif %}
 
 {% if step == 'mapping' %}
