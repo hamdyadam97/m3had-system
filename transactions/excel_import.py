@@ -221,21 +221,10 @@ def import_excel_data(file_path, mapping, branch, user):
                     if found_collector_id:
                         collected_by_user_id = found_collector_id
                         collector_found = True
-                    else:
-                        collector_found = False
-                else:
-                    collector_found = False
-            else:
-                collector_found = False
 
-            # التحقق من وجود المحصل حسب نوع العملية
-            if income_type == 'registration' and not collector_found:
-                errors.append(f'صف {idx+1}: تسجيل جديد يتطلب محصلاً مسجلاً - المحصل "{collector}" غير موجود')
-                continue
-            elif income_type == 'installment' and not collector_found:
-                # القسط يمكن استخدام Admin
-                if collector:
-                    errors.append(f'صف {idx+1}: المحصل "{collector}" غير مسجل - سيتم استخدام المستخدم الحالي كمحصل')
+            # لو المحصل غير موجود، يتسجل "لم يتم تعيينه" والمستخدم الحالي هو المحصل الافتراضي
+            if not collector_found:
+                collector = 'لم يتم تعيينه'
                 collected_by_user_id = user.id if user else None
 
             # رقم العملية
