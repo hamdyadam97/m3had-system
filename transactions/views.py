@@ -2,7 +2,7 @@ import logging
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Sum, Q
 from datetime import date
@@ -156,7 +156,6 @@ def income_detail(request, pk):
 
 
 @login_required
-@permission_required('transactions.add_income', raise_exception=True)
 def income_add(request):
     """إضافة إيراد جديد"""
     if request.method == 'POST':
@@ -246,7 +245,6 @@ from django.db import transaction
 
 
 @login_required
-@permission_required('transactions.add_income', raise_exception=True)
 def excel_style_transaction(request):
     """تسجيل مجموعة حركات مالية بنفس أسلوب ملف الـ Excel"""
     if request.method == 'POST':
@@ -345,7 +343,6 @@ from .excel_import import parse_excel_preview, import_excel_data, import_excel_e
 
 
 @login_required
-@permission_required('transactions.add_income', raise_exception=True)
 def excel_import(request):
     """استيراد ملف Excel للإيرادات"""
     if request.method == 'POST':
@@ -483,7 +480,6 @@ def task_status_api(request, task_id):
 
 
 @login_required
-@permission_required('transactions.add_expense', raise_exception=True)
 def excel_style_expense(request):
     """تسجيل مجموعة مصروفات بنفس أسلوب ملف الـ Excel"""
     if request.method == 'POST':
@@ -523,7 +519,6 @@ def excel_style_expense(request):
 
 
 @login_required
-@permission_required('transactions.add_expense', raise_exception=True)
 def excel_import_expense(request):
     """استيراد ملف Excel للمصروفات"""
     if request.method == 'POST':
