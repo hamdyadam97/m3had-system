@@ -66,7 +66,7 @@
 </div>
 
 <!-- إحصائيات عامة للنظام (للأدمن فقط) -->
-{% if user.is_superuser or user.is_admin() %}
+{% if user.is_superuser or user.is_admin %}
 <div class="row mb-4">
     <div class="col-md-12 mb-3">
         <h5 class="text-muted"><i class="fas fa-chart-pie me-2"></i> إحصائيات النظام</h5>
@@ -305,7 +305,7 @@
                         </a>
                     </div>
                 </div>
-                {% if user.is_superuser or user.is_admin() %}
+                {% if user.is_superuser or user.is_admin %}
                 <div class="row mt-2">
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'accounts:user_list' %}" class="btn btn-dark w-100 py-3">

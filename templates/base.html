@@ -184,7 +184,7 @@
                         <a class="nav-link" href="{% url 'dashboard:dashboard' %}"><i class="fas fa-home"></i> الرئيسية</a>
                     </li>
 
-                    {% if user.is_superuser or user.is_admin() or user.user_type == 'regional_manager' %}
+                    {% if user.is_superuser or user.is_admin or user.user_type == 'regional_manager' %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle px-3 mx-lg-3 d-flex align-items-center"
                            href="#" id="branchSwitch" role="button" data-bs-toggle="dropdown" aria-expanded="false">

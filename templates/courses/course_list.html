@@ -16,7 +16,7 @@
             </a>
         </div>
 
-        {% if user.is_superuser or user.is_admin() %}
+        {% if user.is_superuser or user.is_admin %}
         <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#importModal">
             <i class="fas fa-file-import"></i> استيراد
         </button>
