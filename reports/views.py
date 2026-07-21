@@ -89,17 +89,17 @@ def get_course_filter(request):
 # =============================================================================
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def charts_report(request):
     """صفحة الرسومات البيانية المتقدمة"""
     today = date.today()
+    visible_branches = get_visible_branches(request.user)
     
     # === 1. إيرادات/مصروفات آخر 30 يوم ===
     last_30_days = []
     for i in range(29, -1, -1):
         d = today - timedelta(days=i)
-        day_income = Income.objects.filter(date=d).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-        day_expenses = Expense.objects.filter(date=d).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        day_income = Income.objects.filter(date=d, branch__in=visible_branches).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        day_expenses = Expense.objects.filter(date=d, branch__in=visible_branches).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         last_30_days.append({
             'date': d.strftime('%Y-%m-%d'),
             'income': float(day_income),
@@ -117,11 +117,11 @@ def charts_report(request):
             year -= 1
         
         month_income = Income.objects.filter(
-            date__year=year, date__month=month
+            date__year=year, date__month=month, branch__in=visible_branches
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         
         month_expenses = Expense.objects.filter(
-            date__year=year, date__month=month
+            date__year=year, date__month=month, branch__in=visible_branches
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         
         last_12_months.append({
@@ -132,20 +132,20 @@ def charts_report(request):
     
     # === 3. أكثر 10 فروع ===
     top_branches = []
-    for item in Income.objects.values('branch__name').annotate(
+    for item in Income.objects.filter(branch__in=visible_branches).values('branch__name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:10]:
         top_branches.append({'branch__name': item['branch__name'], 'total': float(item['total'])})
     
     # === 4. أكثر 10 دورات ===
     top_courses = []
-    for item in Income.objects.filter(course__isnull=False).values('course__name').annotate(
+    for item in Income.objects.filter(branch__in=visible_branches, course__isnull=False).values('course__name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:10]:
         top_courses.append({'course__name': item['course__name'], 'total': float(item['total'])})
     
     # === 5. أكثر 10 محصلين ===
-    top_collectors_raw = Income.objects.values('collected_by__first_name', 'collected_by__last_name').annotate(
+    top_collectors_raw = Income.objects.filter(branch__in=visible_branches).values('collected_by__first_name', 'collected_by__last_name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:10]
     top_collectors = []
@@ -155,7 +155,7 @@ def charts_report(request):
     
     # === 6. توزيع أنواع الإيرادات ===
     income_types = []
-    for item in Income.objects.values('income_type').annotate(
+    for item in Income.objects.filter(branch__in=visible_branches).values('income_type').annotate(
         total=Sum('amount')
     ).order_by('-total'):
         label = {'registration': 'تسجيل جديد', 'installment': 'تحصيل قسط'}.get(item['income_type'], item['income_type'])
@@ -164,19 +164,19 @@ def charts_report(request):
     # === 7. توزيع فئات المصروفات ===
     expense_category_labels = dict(Expense.EXPENSE_CATEGORY_CHOICES)
     expense_categories = []
-    for item in Expense.objects.values('category').annotate(
+    for item in Expense.objects.filter(branch__in=visible_branches).values('category').annotate(
         total=Sum('amount')
     ).order_by('-total'):
         expense_categories.append({'category': item['category'], 'label': expense_category_labels.get(item['category'], item['category']), 'total': float(item['total'])})
     
     # === 8. مقارنة الفروع - آخر 7 أيام ===
     branches_comparison = []
-    branch_names = list(Branch.objects.filter(is_active=True).values_list('name', flat=True)[:8])
+    branch_names = list(visible_branches.values_list('name', flat=True)[:8])
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
         day_data = {'date': d.strftime('%Y-%m-%d')}
         for bname in branch_names:
-            day_total = Income.objects.filter(date=d, branch__name=bname).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+            day_total = Income.objects.filter(date=d, branch__name=bname, branch__in=visible_branches).aggregate(total=Sum('amount'))['total'] or Decimal('0')
             day_data[bname] = float(day_total)
         branches_comparison.append(day_data)
     
@@ -195,25 +195,25 @@ def charts_report(request):
 
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def reports_dashboard(request):
     """لوحة تحكم التقارير مع Charts"""
     today = date.today()
     month_start = today.replace(day=1)
+    visible_branches = get_visible_branches(request.user)
     
     # إحصائيات الشهر الحالي
     month_income = Income.objects.filter(
-        date__range=[month_start, today]
+        date__range=[month_start, today], branch__in=visible_branches
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
     
     month_expenses = Expense.objects.filter(
-        date__range=[month_start, today]
+        date__range=[month_start, today], branch__in=visible_branches
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0')
     
     # أكثر 5 فروع
     top_branches = []
     for item in Income.objects.filter(
-        date__range=[month_start, today]
+        date__range=[month_start, today], branch__in=visible_branches
     ).values('branch__name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:5]:
@@ -223,7 +223,8 @@ def reports_dashboard(request):
     top_courses = []
     for item in Income.objects.filter(
         date__range=[month_start, today],
-        course__isnull=False
+        course__isnull=False,
+        branch__in=visible_branches
     ).values('course__name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:5]:
@@ -231,7 +232,7 @@ def reports_dashboard(request):
     
     # أكثر 5 محصلين
     top_collectors_raw = Income.objects.filter(
-        date__range=[month_start, today]
+        date__range=[month_start, today], branch__in=visible_branches
     ).values('collected_by__first_name', 'collected_by__last_name').annotate(
         total=Sum('amount')
     ).order_by('-total')[:5]
@@ -245,8 +246,8 @@ def reports_dashboard(request):
     last_7_days = []
     for i in range(6, -1, -1):
         d = today - timedelta(days=i)
-        day_income = Income.objects.filter(date=d).aggregate(total=Sum('amount'))['total'] or Decimal('0')
-        day_expenses = Expense.objects.filter(date=d).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        day_income = Income.objects.filter(date=d, branch__in=visible_branches).aggregate(total=Sum('amount'))['total'] or Decimal('0')
+        day_expenses = Expense.objects.filter(date=d, branch__in=visible_branches).aggregate(total=Sum('amount'))['total'] or Decimal('0')
         last_7_days.append({
             'date': d.strftime('%Y-%m-%d'),
             'income': float(day_income),
@@ -266,7 +267,6 @@ def reports_dashboard(request):
 
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def daily_report(request):
     today = date.today()
     date_str = request.GET.get('date')
@@ -358,7 +358,6 @@ def daily_report(request):
 
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def monthly_report(request):
     """التقرير الشهري المطور"""
     today = date.today()
@@ -410,7 +409,6 @@ def monthly_report(request):
 # =============================================================================
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def branches_report(request):
     """
     تقرير شامل للمعاهد:
@@ -420,10 +418,12 @@ def branches_report(request):
     - أكثر شهر تحقيقًا للدخل لكل معهد
     """
     start_date, end_date = get_date_range(request)
+    visible_branches = get_visible_branches(request.user)
     
     # ===== أكثر المعاهد عددًا من حيث الطلاب (فريدين) =====
     students_by_branch_qs = Income.objects.filter(
         date__range=[start_date, end_date],
+        branch__in=visible_branches,
         party_name__isnull=False
     ).exclude(party_name='').values('branch').annotate(
         students_count=Count('party_name', distinct=True)
@@ -440,7 +440,7 @@ def branches_report(request):
     
     # ===== أكثر المعاهد دخلًا (إجمالي) =====
     income_by_branch = Income.objects.filter(
-        date__range=[start_date, end_date]
+        date__range=[start_date, end_date], branch__in=visible_branches
     ).values('branch').annotate(
         total=Sum('amount')
     ).order_by('-total')[:10]
@@ -456,7 +456,7 @@ def branches_report(request):
     
     # ===== أكثر المعاهد مصاريف (إجمالي) =====
     expenses_by_branch = Expense.objects.filter(
-        date__range=[start_date, end_date]
+        date__range=[start_date, end_date], branch__in=visible_branches
     ).values('branch').annotate(
         total_expenses=Sum('amount')
     ).order_by('-total_expenses')[:10]
@@ -472,7 +472,7 @@ def branches_report(request):
     
     # ===== أكثر شهر تحقيقًا للدخل لكل معهد =====
     top_months_by_branch = []
-    for branch in Branch.objects.all():
+    for branch in visible_branches:
         top_month = Income.objects.filter(
             branch=branch,
             date__range=[start_date, end_date]
@@ -492,7 +492,7 @@ def branches_report(request):
     
     # ===== أكثر يوم تحقيقًا للدخل لكل معهد =====
     top_days_by_branch = []
-    for branch in Branch.objects.all():
+    for branch in visible_branches:
         top_day = Income.objects.filter(
             branch=branch,
             date__range=[start_date, end_date]
@@ -526,7 +526,6 @@ def branches_report(request):
 # =============================================================================
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def employees_report(request):
     """
     تقرير شامل للمحصلين:
@@ -536,6 +535,7 @@ def employees_report(request):
     """
     start_date, end_date = get_date_range(request)
     branch = get_branch_filter(request)
+    visible_branches = get_visible_branches(request.user)
     
     def build_employee_list(queryset, count_field, amount_field):
         """مساعد لبناء قائمة موظفين من queryset"""
@@ -554,9 +554,10 @@ def employees_report(request):
     # ===== أكثر المحصلين تسجيلًا جديدًا =====
     reg_qs = Income.objects.filter(
         income_type='registration',
-        date__range=[start_date, end_date]
+        date__range=[start_date, end_date],
+        branch__in=visible_branches
     )
-    if branch:
+    if branch and branch in visible_branches:
         reg_qs = reg_qs.filter(branch=branch)
     
     reg_data = reg_qs.values('collected_by').annotate(
@@ -568,9 +569,10 @@ def employees_report(request):
     # ===== أكثر المحصلين أقساطًا =====
     ins_qs = Income.objects.filter(
         income_type='installment',
-        date__range=[start_date, end_date]
+        date__range=[start_date, end_date],
+        branch__in=visible_branches
     )
-    if branch:
+    if branch and branch in visible_branches:
         ins_qs = ins_qs.filter(branch=branch)
     
     ins_data = ins_qs.values('collected_by').annotate(
@@ -581,9 +583,10 @@ def employees_report(request):
     
     # ===== أكثر المحصلين إيرادات (إجمالي) =====
     total_qs = Income.objects.filter(
-        date__range=[start_date, end_date]
+        date__range=[start_date, end_date],
+        branch__in=visible_branches
     )
-    if branch:
+    if branch and branch in visible_branches:
         total_qs = total_qs.filter(branch=branch)
     
     total_data = total_qs.values('collected_by').annotate(
@@ -598,7 +601,7 @@ def employees_report(request):
         'start_date': start_date,
         'end_date': end_date,
         'selected_branch': branch,
-        'branches': Branch.objects.all(),
+        'branches': visible_branches,
     }
     return render(request, 'reports/employees_report.html', context)
 
@@ -608,7 +611,6 @@ def employees_report(request):
 # =============================================================================
 
 @login_required
-@permission_required('transactions.view_reports', raise_exception=True)
 def courses_report(request):
     """
     تقرير شامل للدورات:
@@ -618,9 +620,10 @@ def courses_report(request):
     """
     start_date, end_date = get_date_range(request)
     branch = get_branch_filter(request)
+    visible_branches = get_visible_branches(request.user)
     
-    base_filter = Q(date__range=[start_date, end_date])
-    if branch:
+    base_filter = Q(date__range=[start_date, end_date], branch__in=visible_branches)
+    if branch and branch in visible_branches:
         base_filter &= Q(branch=branch)
     
     # ===== أكثر الدورات تسجيلًا (طلاب فريدين) =====
@@ -680,7 +683,7 @@ def courses_report(request):
         'start_date': start_date,
         'end_date': end_date,
         'selected_branch': branch,
-        'branches': Branch.objects.all(),
+        'branches': visible_branches,
     }
     return render(request, 'reports/courses_report.html', context)
 
