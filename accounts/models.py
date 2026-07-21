@@ -6,9 +6,10 @@ from branches.models import Branch
 class User(AbstractUser):
     USER_TYPE_CHOICES = [
         ('admin', 'مدير النظام'),
+        ('executive_manager', 'مدير تنفيذي'),
         ('branch_manager', 'مدير فرع'),
         ('employee', 'موظف'),
-        ('regional_manager', 'مدير إقليمي'),  # إضافة هذا النوع
+        ('regional_manager', 'مدير إقليمي'),
         ('accountant', 'محاسب'),
     ]
     
@@ -47,6 +48,8 @@ class User(AbstractUser):
         return self.user_type == 'branch_manager'
     
     def is_admin(self):
-        return self.user_type == 'admin'
+        return self.user_type == 'admin' or self.user_type == 'executive_manager'
     
+    def is_executive_manager(self):
+        return self.user_type == 'executive_manager'
 

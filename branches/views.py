@@ -13,7 +13,7 @@ from datetime import date
 @login_required
 def branch_list(request, branch_form=None, open_modal=False):
     """قائمة الفروع"""
-    if request.user.is_superuser or request.user.user_type == 'admin':
+    if request.user.is_superuser or request.user.is_admin():
         branches = Branch.objects.filter(is_active=True)
     else:
         branches = Branch.objects.filter(id=request.user.branch_id) if request.user.branch else Branch.objects.none()
@@ -41,7 +41,7 @@ def branch_detail(request, pk):
 
 @login_required
 def branch_add(request):
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         raise PermissionDenied
 
     if request.method == 'POST':
@@ -76,7 +76,7 @@ def branch_edit(request, pk):
     branch = get_object_or_404(Branch, pk=pk)
 
     # التحقق من الصلاحيات (للمديرين فقط)
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 
@@ -156,7 +156,7 @@ from .models import Branch
 # --- دالة تصدير الفروع إلى Excel ---
 @login_required
 def export_branches_excel(request):
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 
@@ -191,7 +191,7 @@ def export_branches_excel(request):
 # --- دالة استيراد الفروع من Excel ---
 @login_required
 def import_branches_excel(request):
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 
@@ -229,7 +229,7 @@ def import_branches_excel(request):
 
 @login_required
 def export_branches_pdf(request):
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 

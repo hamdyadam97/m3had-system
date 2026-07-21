@@ -18,7 +18,7 @@ def dashboard(request):
     week_start = today - timedelta(days=6)
 
     # 1. تحديد الفروع المتاحة للمستخدم
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         visible_branches = Branch.objects.filter(is_active=True)
     elif user.user_type == 'regional_manager':
         visible_branches = user.managed_branches.all()
@@ -81,7 +81,7 @@ def dashboard(request):
     }
 
     # إضافة إحصائيات الأدمن
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         context.update({
             'total_branches': Branch.objects.filter(is_active=True).count(),
             'total_users': User.objects.filter(is_active=True).count(),
@@ -184,7 +184,7 @@ def branch_dashboard(request, branch_id):
     # Security Check
     can_view = (
         user.is_superuser or 
-        user.user_type == 'admin' or
+        user.is_admin() or
         (user.user_type == 'regional_manager' and branch in user.managed_branches.all()) or
         user.branch == branch
     )

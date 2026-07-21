@@ -30,7 +30,7 @@ def income_list(request):
     # 2. فلترة البيانات بناءً على الرتبة (Scope)
     user = request.user
 
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         # الأدمن يرى كل شيء (لا نطبق فلتر)
         pass
 
@@ -66,7 +66,7 @@ def student_list(request):
 
     user = request.user
 
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         pass
     elif user.user_type == 'regional_manager':
         qs = qs.filter(branch__in=user.managed_branches.all())
@@ -122,7 +122,7 @@ def student_list(request):
 
     # جلب الدورات للفلتر
     from courses.models import Course
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         courses = Course.objects.all()
     elif user.user_type == 'regional_manager':
         courses = Course.objects.filter(branch__in=user.managed_branches.all())
@@ -181,7 +181,7 @@ def expense_list(request):
     user = request.user
     expense_queryset = Expense.objects.select_related('branch', 'created_by').all().order_by('-date', '-created_at')
 
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         pass
     elif user.user_type == 'regional_manager':
         expense_queryset = expense_queryset.filter(branch__in=user.managed_branches.all())
@@ -191,12 +191,13 @@ def expense_list(request):
     paginator = Paginator(expense_queryset, 15)
     expenses = paginator.get_page(request.GET.get('page'))
     return render(request, 'transactions/expense_list.html', {'expenses': expenses})
+@login_required
 def expense_detail(request, pk):
     """تفاصيل المصروف"""
     expense = get_object_or_404(Expense, pk=pk)
 
     # التحقق من الصلاحيات
-    if not request.user.is_superuser and request.user.branch != expense.branch:
+    if not request.user.is_admin() and request.user.branch != expense.branch:
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 

@@ -37,7 +37,7 @@ from courses.models import Course
 
 def get_visible_branches(user):
     """دالة مساعدة لتحديد نطاق رؤية المستخدم"""
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         return Branch.objects.filter(is_active=True)
     elif user.user_type == 'regional_manager':
         return user.managed_branches.all()

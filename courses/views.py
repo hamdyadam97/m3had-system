@@ -17,7 +17,7 @@ def course_list(request):
     course_queryset = Course.objects.filter(is_active=True).order_by('-id')
 
     # 1. فلترة الفروع بناءً على نوع المستخدم (Scope)
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         # الأدمن يرى كل الدورات في كل الفروع
         pass
     elif user.user_type == 'regional_manager':
@@ -49,7 +49,7 @@ def course_detail(request, pk):
     from transactions.models import Income
 
     # تحديد نطاق البيانات (هل يرى إحصائيات الفرع أم الكل؟)
-    if user.is_superuser or user.user_type == 'admin':
+    if user.is_superuser or user.is_admin():
         income_queryset = Income.objects.filter(course=course)
     elif user.user_type == 'regional_manager':
         branches = user.managed_branches.all()
@@ -155,7 +155,7 @@ def get_filtered_courses(request):
     user = request.user
     queryset = Course.objects.filter(is_active=True).order_by('-id')
 
-    if not (user.is_superuser or user.user_type == 'admin'):
+    if not (user.is_superuser or user.is_admin()):
         if user.user_type == 'regional_manager':
             queryset = queryset.filter(branches__in=user.managed_branches.all()).distinct()
         elif user.branch:

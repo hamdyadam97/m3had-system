@@ -151,7 +151,7 @@
                             </div>
                         </td>
                         <td>
-                            <span class="badge {% if u.user_type == 'admin' %}bg-dark{% elif u.user_type == 'branch_manager' %}bg-info{% elif u.user_type == 'regional_manager' %}bg-warning{% else %}bg-secondary{% endif %}">
+                            <span class="badge {% if u.user_type == 'admin' or u.user_type == 'executive_manager' %}bg-dark{% elif u.user_type == 'branch_manager' %}bg-info{% elif u.user_type == 'regional_manager' %}bg-warning{% else %}bg-secondary{% endif %}">
                                 {{ u.get_user_type_display }}
                             </span>
                         </td>

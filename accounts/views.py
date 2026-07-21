@@ -153,7 +153,7 @@ def profile(request):
 
 # شرط: فقط الأدمن هو من يدير المستخدمين
 def admin_only(user):
-    return user.is_superuser or user.user_type == 'admin'
+    return user.is_superuser or user.is_admin()
 
 # 1. قائمة المستخدمين
 @login_required
@@ -239,6 +239,8 @@ def user_create(request):
                 group_name = "Emp"
             elif user.user_type == 'admin':
                 group_name = "admin"
+            elif user.user_type == 'executive_manager':
+                group_name = "executive_manager"
             elif user.user_type == 'branch_manager':
                 group_name = "manager"
             elif user.user_type == 'accountant':
@@ -379,7 +381,7 @@ def download_staff_template(request):
 
 @login_required
 def import_users_excel(request):
-    if not (request.user.is_superuser or request.user.user_type == 'admin'):
+    if not (request.user.is_superuser or request.user.is_admin()):
         from django.core.exceptions import PermissionDenied
         raise PermissionDenied
 

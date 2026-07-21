@@ -82,7 +82,7 @@ class IncomeForm(forms.ModelForm):
 
         # تحديد الفروع المتاحة
         if user:
-            if user.is_superuser or user.user_type == 'admin':
+            if user.is_superuser or user.is_admin():
                 self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
             elif user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
@@ -229,7 +229,7 @@ class ExpenseForm(forms.ModelForm):
 
         # تحديد الفروع المتاحة
         if user:
-            if user.is_superuser or user.user_type == 'admin':
+            if user.is_superuser or user.is_admin():
                 self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
             elif user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
@@ -321,7 +321,7 @@ class ExpenseForm(forms.ModelForm):
             branch = self.user.branch
         
         if branch and self.user:
-            if self.user.is_superuser or self.user.user_type == 'admin':
+            if self.user.is_superuser or self.user.is_admin():
                 return branch
             elif self.user.user_type == 'regional_manager':
                 if branch not in self.user.managed_branches.all():
@@ -476,7 +476,7 @@ class ExcelStyleTransactionForm(forms.Form):
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
-            elif user.is_superuser or user.user_type == 'admin':
+            elif user.is_superuser or user.is_admin():
                 self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
             else:
                 if user.branch:
@@ -553,7 +553,7 @@ class ExcelImportForm(forms.Form):
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
-            elif not (user.is_superuser or user.user_type == 'admin'):
+            elif not (user.is_superuser or user.is_admin()):
                 if user.branch:
                     self.fields['branch'].queryset = Branch.objects.filter(id=user.branch.id)
                     self.fields['branch'].initial = user.branch
@@ -573,7 +573,7 @@ class ExcelImportForm(forms.Form):
         if not branch:
             raise forms.ValidationError('يجب اختيار الفرع')
         if user:
-            if user.is_superuser or user.user_type == 'admin':
+            if user.is_superuser or user.is_admin():
                 return branch
             if user.user_type == 'regional_manager' and branch not in user.managed_branches.all():
                 raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع خارج نطاق إدارتك')
@@ -703,7 +703,7 @@ class ExcelStyleExpenseForm(forms.Form):
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
-            elif user.is_superuser or user.user_type == 'admin':
+            elif user.is_superuser or user.is_admin():
                 self.fields['branch'].queryset = Branch.objects.filter(is_active=True)
             else:
                 if user.branch:
@@ -755,7 +755,7 @@ class ExcelExpenseImportForm(forms.Form):
         if user:
             if user.user_type == 'regional_manager':
                 self.fields['branch'].queryset = user.managed_branches.filter(is_active=True)
-            elif not (user.is_superuser or user.user_type == 'admin'):
+            elif not (user.is_superuser or user.is_admin()):
                 if user.branch:
                     self.fields['branch'].queryset = Branch.objects.filter(id=user.branch.id)
                     self.fields['branch'].initial = user.branch
@@ -775,7 +775,7 @@ class ExcelExpenseImportForm(forms.Form):
         if not branch:
             raise forms.ValidationError('يجب اختيار الفرع')
         if user:
-            if user.is_superuser or user.user_type == 'admin':
+            if user.is_superuser or user.is_admin():
                 return branch
             if user.user_type == 'regional_manager' and branch not in user.managed_branches.all():
                 raise forms.ValidationError('لا يمكنك الاستيراد إلى فرع خارج نطاق إدارتك')
