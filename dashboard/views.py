@@ -82,9 +82,11 @@ def dashboard(request):
 
     # إضافة إحصائيات الأدمن
     if user.is_superuser or user.is_admin():
+        from courses.models import Course
         context.update({
             'total_branches': Branch.objects.filter(is_active=True).count(),
             'total_users': User.objects.filter(is_active=True).count(),
+            'total_courses': Course.objects.filter(is_active=True).count(),
             'total_income_month': monthly_income,
             'total_expense_month': monthly_expenses,
         })
