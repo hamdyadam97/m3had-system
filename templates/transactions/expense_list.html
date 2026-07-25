@@ -28,6 +28,11 @@
     </div>
 </div>
 
+<div class="alert alert-danger d-flex justify-content-between align-items-center">
+    <span><i class="fas fa-calculator"></i> إجمالي المصروفات:</span>
+    <strong>{{ total_expense|floatformat:2 }} ريال سعودي</strong>
+</div>
+
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -59,7 +64,7 @@
                         <td class="text-muted small" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             {{ expense.notes|default:"-" }}
                         </td>
-                        <td><small>{{ expense.created_by.username }}</small></td>
+                        <td><small>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.username }}{% else %}-{% endif %}</small></td>
                         <td>
                             {% if expense.receipt_image %}
                                 <a href="{{ expense.receipt_image.url }}" target="_blank" class="text-info"><i class="fas fa-paperclip"></i></a>

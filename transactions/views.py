@@ -46,12 +46,15 @@ def income_list(request):
             # لو موظف معندوش فرع، م يشوفش حاجة (أمان زيادة)
             income_queryset = income_queryset.none()
 
-    # 3. إعداد التقسيم (Pagination)
+    # 3. إجمالي الإيرادات (على كل النتائج المفلترة قبل الـ pagination)
+    total_income = income_queryset.aggregate(total=Sum('amount'))['total'] or 0
+
+    # 4. إعداد التقسيم (Pagination)
     paginator = Paginator(income_queryset, 20)
     page_number = request.GET.get('page')
     incomes = paginator.get_page(page_number)
 
-    return render(request, 'transactions/income_list.html', {'incomes': incomes})
+    return render(request, 'transactions/income_list.html', {'incomes': incomes, 'total_income': total_income})
 
 
 @login_required
@@ -188,9 +191,11 @@ def expense_list(request):
     else:
         expense_queryset = expense_queryset.filter(branch=user.branch) if user.branch else expense_queryset.none()
 
+    total_expense = expense_queryset.aggregate(total=Sum('amount'))['total'] or 0
+
     paginator = Paginator(expense_queryset, 15)
     expenses = paginator.get_page(request.GET.get('page'))
-    return render(request, 'transactions/expense_list.html', {'expenses': expenses})
+    return render(request, 'transactions/expense_list.html', {'expenses': expenses, 'total_expense': total_expense})
 @login_required
 def expense_detail(request, pk):
     """تفاصيل المصروف"""
