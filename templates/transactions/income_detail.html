@@ -63,7 +63,7 @@
                     <div class="row pt-4 border-top">
                         <div class="col-6">
                             <small class="d-block text-muted">المستلم (الموظف):</small>
-                            <span class="fw-bold">{{ income.collected_by.get_full_name|default:income.collected_by.username }}</span>
+                            <span class="fw-bold">{% if income.collected_by %}{{ income.collected_by.get_full_name|default:income.collected_by.username }}{% else %}-{% endif %}</span>
                         </div>
                         <div class="col-6 text-end">
                             <small class="d-block text-muted">تاريخ التسجيل:</small>

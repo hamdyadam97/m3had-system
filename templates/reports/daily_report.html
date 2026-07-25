@@ -134,7 +134,7 @@
                                 <td class="fw-bold text-success">{{ income.amount|floatformat:2 }}</td>
                                 <td>{{ income.get_payment_method_display }}</td>
                                 <td>{{ income.get_payment_location_display }}</td>
-                                <td>{{ income.collected_by.get_full_name|default:income.collected_by.username }}</td>
+                                <td>{% if income.collected_by %}{{ income.collected_by.get_full_name|default:income.collected_by.username }}{% else %}-{% endif %}</td>
                             </tr>
                             {% empty %}
                             <tr>
@@ -180,7 +180,7 @@
                                 <td>{{ expense.description }}</td>
                                 <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }}</td>
                                 <td>{{ expense.receipt_number|default:"-" }}</td>
-                                <td>{{ expense.created_by.get_full_name|default:expense.created_by.username }}</td>
+                                <td>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.username }}{% else %}-{% endif %}</td>
                             </tr>
                             {% empty %}
                             <tr>
