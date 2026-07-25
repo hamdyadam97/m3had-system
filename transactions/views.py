@@ -403,7 +403,9 @@ def excel_import(request):
                 return render(request, 'transactions/excel_import.html', {
                     'form': form,
                     'mapping_form': mapping_form,
-                    'preview_rows': preview_rows,
+                    'preview_rows': preview_rows[:10],
+                    'total_rows_count': len(preview_rows),
+                    'full_rows': preview_rows,
                     'title': 'استيراد من Excel - تأكيد الأعمدة',
                     'step': 'mapping',
                 })
@@ -572,7 +574,9 @@ def excel_import_expense(request):
                 return render(request, 'transactions/excel_import_expense.html', {
                     'form': form,
                     'mapping_form': mapping_form,
-                    'preview_rows': preview_rows,
+                    'preview_rows': preview_rows[:10],
+                    'total_rows_count': len(preview_rows),
+                    'full_rows': preview_rows,
                     'title': 'استيراد مصروفات من Excel - تأكيد الأعمدة',
                     'step': 'mapping',
                 })

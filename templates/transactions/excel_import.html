@@ -143,7 +143,7 @@
 {% if step == 'mapping' %}
 <div class="card mb-3">
     <div class="card-header bg-primary text-white">
-        <i class="fas fa-table"></i> معاينة أول 10 صفوف
+        <i class="fas fa-table"></i> معاينة أول 10 صفوف من إجمالي {{ total_rows_count }} صف
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -161,7 +161,7 @@
                     <tr>
                         <td>{{ forloop.counter }}</td>
                         {% for cell in row %}
-                        <td data-col="{{ forloop.counter0 }}">{{ cell }}</td>
+                        <td>{{ cell }}</td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
@@ -170,6 +170,7 @@
         </div>
     </div>
 </div>
+{{ full_rows|json_script:"excelFullData" }}
 
 <div class="card">
     <div class="card-body">
@@ -268,14 +269,17 @@
 (function() {
     var amountInput = document.getElementById('{{ mapping_form.amount.id_for_label }}');
     var totalEl = document.getElementById('excelTotalAmount');
-    if (!amountInput || !totalEl) return;
+    var dataEl = document.getElementById('excelFullData');
+    if (!amountInput || !totalEl || !dataEl) return;
+
+    var allRows = JSON.parse(dataEl.textContent);
 
     function recalcExcelTotal() {
-        var colIndex = amountInput.value;
+        var colIndex = parseInt(amountInput.value, 10);
         var total = 0;
         var count = 0;
-        document.querySelectorAll('#excelPreviewTable tbody td[data-col="' + colIndex + '"]').forEach(function(cell) {
-            var val = parseFloat(cell.textContent.replace(/,/g, '').trim());
+        allRows.forEach(function(row) {
+            var val = parseFloat(String(row[colIndex] || '').replace(/,/g, '').trim());
             if (!isNaN(val)) {
                 total += val;
                 count++;
