@@ -147,7 +147,7 @@
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-sm table-bordered mb-0">
+            <table class="table table-sm table-bordered mb-0" id="excelPreviewTable">
                 <thead class="table-light">
                     <tr>
                         <th>#</th>
@@ -161,7 +161,7 @@
                     <tr>
                         <td>{{ forloop.counter }}</td>
                         {% for cell in row %}
-                        <td>{{ cell }}</td>
+                        <td data-col="{{ forloop.counter0 }}">{{ cell }}</td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
@@ -174,6 +174,10 @@
 <div class="card">
     <div class="card-body">
         <h5 class="mb-3">الخطوة 2: ربط الأعمدة</h5>
+        <div class="alert alert-primary d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-calculator"></i> إجمالي المبالغ في الملف (حسب عمود المبلغ المحدد أدناه):</span>
+            <strong id="excelTotalAmount">0.00</strong>
+        </div>
         <form method="post">
             {% csrf_token %}
             {{ mapping_form.step }}
@@ -259,6 +263,31 @@
         </form>
     </div>
 </div>
+
+<script>
+(function() {
+    var amountInput = document.getElementById('{{ mapping_form.amount.id_for_label }}');
+    var totalEl = document.getElementById('excelTotalAmount');
+    if (!amountInput || !totalEl) return;
+
+    function recalcExcelTotal() {
+        var colIndex = amountInput.value;
+        var total = 0;
+        var count = 0;
+        document.querySelectorAll('#excelPreviewTable tbody td[data-col="' + colIndex + '"]').forEach(function(cell) {
+            var val = parseFloat(cell.textContent.replace(/,/g, '').trim());
+            if (!isNaN(val)) {
+                total += val;
+                count++;
+            }
+        });
+        totalEl.textContent = total.toLocaleString('ar-EG', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' ريال سعودي (' + count + ' صف)';
+    }
+
+    amountInput.addEventListener('input', recalcExcelTotal);
+    recalcExcelTotal();
+})();
+</script>
 {% endif %}
 
 {% endblock %}
