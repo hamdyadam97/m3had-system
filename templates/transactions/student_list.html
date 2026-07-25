@@ -24,7 +24,7 @@
                     <option value="">كل الدورات / الدبلومات</option>
                     {% for course in courses %}
                     <option value="{{ course.id }}" {% if course_id == course.id|stringformat:"s" %}selected{% endif %}>
-                        {{ course.name }} ({{ course.branch.name }})
+                        {{ course.name }}
                     </option>
                     {% endfor %}
                 </select>
