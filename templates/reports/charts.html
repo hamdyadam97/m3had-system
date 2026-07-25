@@ -137,6 +137,20 @@ const colors = {
 };
 const palette = [colors.primary, colors.success, colors.danger, colors.warning, colors.info, colors.purple, colors.orange, colors.teal, colors.pink, colors.secondary];
 
+// تنسيق القيم المالية بالريال السعودي
+function formatSAR(value) {
+    return Number(value).toLocaleString('ar-SA') + ' ر.س';
+}
+const currencyTooltip = {
+    callbacks: {
+        label: function(context) {
+            const label = context.dataset.label ? context.dataset.label + ': ' : '';
+            const raw = context.parsed.y !== undefined ? context.parsed.y : (context.parsed.x !== undefined ? context.parsed.x : context.parsed);
+            return label + formatSAR(raw);
+        }
+    }
+};
+
 // 1. إيرادات/مصروفات 30 يوم (Line)
 new Chart(document.getElementById('daily30Chart'), {
     type: 'line',
@@ -166,8 +180,8 @@ new Chart(document.getElementById('daily30Chart'), {
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true } }
+        plugins: { legend: { position: 'top' }, tooltip: currencyTooltip },
+        scales: { y: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -192,8 +206,8 @@ new Chart(document.getElementById('monthly12Chart'), {
     options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true } }
+        plugins: { legend: { position: 'top' }, tooltip: currencyTooltip },
+        scales: { y: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -211,8 +225,8 @@ new Chart(document.getElementById('branchesChart'), {
     options: {
         responsive: true,
         indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true } }
+        plugins: { legend: { display: false }, tooltip: currencyTooltip },
+        scales: { x: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -230,8 +244,8 @@ new Chart(document.getElementById('coursesChart'), {
     options: {
         responsive: true,
         indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true } }
+        plugins: { legend: { display: false }, tooltip: currencyTooltip },
+        scales: { x: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -249,8 +263,8 @@ new Chart(document.getElementById('collectorsChart'), {
     options: {
         responsive: true,
         indexAxis: 'y',
-        plugins: { legend: { display: false } },
-        scales: { x: { beginAtZero: true } }
+        plugins: { legend: { display: false }, tooltip: currencyTooltip },
+        scales: { x: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -273,8 +287,8 @@ new Chart(document.getElementById('branchComparisonChart'), {
     },
     options: {
         responsive: true,
-        plugins: { legend: { position: 'top' } },
-        scales: { y: { beginAtZero: true } }
+        plugins: { legend: { position: 'top' }, tooltip: currencyTooltip },
+        scales: { y: { beginAtZero: true, ticks: { callback: formatSAR } } }
     }
 });
 
@@ -290,7 +304,7 @@ new Chart(document.getElementById('incomeTypeChart'), {
     },
     options: {
         responsive: true,
-        plugins: { legend: { position: 'bottom' } }
+        plugins: { legend: { position: 'bottom' }, tooltip: currencyTooltip }
     }
 });
 
@@ -306,7 +320,7 @@ new Chart(document.getElementById('expenseCategoryChart'), {
     },
     options: {
         responsive: true,
-        plugins: { legend: { position: 'bottom' } }
+        plugins: { legend: { position: 'bottom' }, tooltip: currencyTooltip }
     }
 });
 </script>

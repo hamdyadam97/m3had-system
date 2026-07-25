@@ -63,7 +63,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">إجمالي الإيرادات</h6>
-                        <h3 class="mb-0">{{ total_income|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ total_income|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
                 </div>
@@ -76,7 +76,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">إجمالي المصروفات</h6>
-                        <h3 class="mb-0">{{ total_expenses|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ total_expenses|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-wallet fa-2x opacity-50"></i>
                 </div>
@@ -89,7 +89,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">الصافي</h6>
-                        <h3 class="mb-0">{{ net_amount|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ net_amount|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-chart-line fa-2x opacity-50"></i>
                 </div>
@@ -131,7 +131,7 @@
                                         {{ income.get_income_type_display }}
                                     </span>
                                 </td>
-                                <td class="fw-bold text-success">{{ income.amount|floatformat:2 }}</td>
+                                <td class="fw-bold text-success">{{ income.amount|floatformat:2 }} ر.س</td>
                                 <td>{{ income.get_payment_method_display }}</td>
                                 <td>{{ income.get_payment_location_display }}</td>
                                 <td>{% if income.collected_by %}{{ income.collected_by.get_full_name|default:income.collected_by.username }}{% else %}-{% endif %}</td>
@@ -178,7 +178,7 @@
                                 <td>{{ forloop.counter }}</td>
                                 <td>{{ expense.get_category_display }}</td>
                                 <td>{{ expense.description }}</td>
-                                <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }}</td>
+                                <td class="fw-bold text-danger">{{ expense.amount|floatformat:2 }} ر.س</td>
                                 <td>{{ expense.receipt_number|default:"-" }}</td>
                                 <td>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.username }}{% else %}-{% endif %}</td>
                             </tr>

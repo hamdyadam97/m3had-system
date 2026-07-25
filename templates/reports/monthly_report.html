@@ -43,7 +43,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">الهدف الشهري</h6>
-                        <h3 class="mb-0">{{ monthly_target|default:0|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ monthly_target|default:0|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-bullseye fa-2x opacity-50"></i>
                 </div>
@@ -56,7 +56,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">التحصيل الفعلي</h6>
-                        <h3 class="mb-0">{{ total_income|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ total_income|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
                 </div>
@@ -69,7 +69,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">المصروفات</h6>
-                        <h3 class="mb-0">{{ total_expenses|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ total_expenses|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-wallet fa-2x opacity-50"></i>
                 </div>
@@ -82,7 +82,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="card-title mb-1">الربح</h6>
-                        <h3 class="mb-0">{{ profit|floatformat:2 }}</h3>
+                        <h3 class="mb-0">{{ profit|floatformat:2 }} ر.س</h3>
                     </div>
                     <i class="fas fa-chart-line fa-2x opacity-50"></i>
                 </div>
@@ -137,16 +137,16 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span>إيرادات التسجيل</span>
-                    <span class="badge bg-success">{{ registration_income|default:0|floatformat:2 }}</span>
+                    <span class="badge bg-success">{{ registration_income|default:0|floatformat:2 }} ر.س</span>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <span>إيرادات التحصيل</span>
-                    <span class="badge bg-info">{{ installment_income|default:0|floatformat:2 }}</span>
+                    <span class="badge bg-info">{{ installment_income|default:0|floatformat:2 }} ر.س</span>
                 </div>
                 <hr>
                 <div class="d-flex justify-content-between align-items-center">
                     <span class="fw-bold">الإجمالي</span>
-                    <span class="badge bg-primary">{{ total_income|floatformat:2 }}</span>
+                    <span class="badge bg-primary">{{ total_income|floatformat:2 }} ر.س</span>
                 </div>
             </div>
         </div>
