@@ -136,48 +136,11 @@ def import_excel_data(file_path, mapping, branch, user):
     for c in Course.objects.filter(is_active=True).values('id', 'name'):
         courses_cache[c['name']] = c['id']
 
-    # دورات تم إنشاؤها تلقائياً خلال هذا الاستيراد
-    created_courses = {}
-
-    def create_course_if_missing(name, branch):
-        """إنشاء دورة/دبلومة جديدة لو مش مسجلة"""
-        import uuid
-        name = name.strip()
-        if not name:
-            return None
-
-        # محاولة العثور على الدورة بأقرب تطابق أولاً
-        existing_id = find_course_id(name, courses_cache)
-        if existing_id:
-            return existing_id
-
-        # لو تم إنشاؤها خلال هذا الاستيراد، استخدمها
-        if name in created_courses:
-            return created_courses[name]
-
-        # تحديد نوع الدورة من اسمها
-        course_type = 'diploma' if any(word in name for word in ['دبلوم', 'دبلومة']) else 'course'
-
-        # إنشاء كود فريد
-        code = f"AUTO-{uuid.uuid4().hex[:8].upper()}"
-
-        course = Course.objects.create(
-            name=name,
-            code=code,
-            course_type=course_type,
-            price=0,
-            duration_days=30,
-            is_active=True,
-        )
-        course.branches.add(branch)
-
-        # تحديث الكاش
-        courses_cache[name] = course.id
-        created_courses[name] = course.id
-        return course.id
-
+    # المحصل لازم يكون من طاقم العمل (نفس قاعدة نموذج التسجيل السريع)
     collectors_cache = {}
-    for u in User.objects.values('id', 'first_name', 'last_name', 'username'):
+    for u in User.objects.filter(
+        is_active=True, user_type__in=['employee', 'branch_manager', 'accountant']
+    ).values('id', 'first_name', 'last_name', 'username'):
         collectors_cache[u['username']] = u['id']
         full = f"{u['first_name'] or ''} {u['last_name'] or ''}".strip()
         if full:
@@ -251,38 +214,42 @@ def import_excel_data(file_path, mapping, branch, user):
             if mapping.get('city') is not None:
                 city = str(values[mapping['city']]).strip()
 
-            # محصل (من cache)
+            # محصل: مطلوب دائماً ولازم يكون من طاقم العمل
             collector = ''
-            collected_by_user_id = user.id if user else None
-            collector_found = False
+            collected_by_user_id = None
             if mapping.get('collector_name') is not None:
                 collector = str(values[mapping['collector_name']]).strip()
-                if collector:
-                    found_collector_id = find_collector_id(collector, collectors_cache)
-                    if found_collector_id:
-                        collected_by_user_id = found_collector_id
-                        collector_found = True
-
-            # لو المحصل غير موجود، يتسجل "لم يتم تعيينه" والمستخدم الحالي هو المحصل الافتراضي
-            if not collector_found:
-                collector = 'لم يتم تعيينه'
+                if not collector:
+                    errors.append(f'صف {idx+1}: المحصل مطلوب')
+                    continue
+                found_collector_id = find_collector_id(collector, collectors_cache)
+                if not found_collector_id:
+                    errors.append(f'صف {idx+1}: المحصل "{collector}" غير مسجل ضمن طاقم العمل')
+                    continue
+                collected_by_user_id = found_collector_id
+            else:
+                # لا يوجد عمود محصل في الملف: المستخدم الذي يقوم بالاستيراد هو المحصل الافتراضي
                 collected_by_user_id = user.id if user else None
+                collector = user.get_full_name() if user else ''
+                if not collected_by_user_id:
+                    errors.append(f'صف {idx+1}: المحصل مطلوب')
+                    continue
 
             # رقم العملية
             tx_num = ''
             if mapping.get('transaction_number') is not None:
                 tx_num = str(values[mapping['transaction_number']]).strip()
 
-            # الدورة / الدبلومة (من cache أو إنشاء تلقائي)
+            # الدورة / الدبلومة: لازم تكون مسجلة بالفعل في النظام (بدون إنشاء تلقائي)
             course_id = None
             if mapping.get('course') is not None:
                 course_raw = str(values[mapping['course']]).strip()
                 if not course_raw:
                     errors.append(f'صف {idx+1}: لا يمكن إضافة سعر بدون إضافة دورة')
                     continue
-                course_id = create_course_if_missing(course_raw, branch)
+                course_id = find_course_id(course_raw, courses_cache)
                 if not course_id:
-                    errors.append(f'صف {idx+1}: لا يمكن إنشاء الدورة "{course_raw}"')
+                    errors.append(f'صف {idx+1}: الدورة "{course_raw}" غير مسجلة في النظام')
                     continue
 
             # ملاحظات إضافية

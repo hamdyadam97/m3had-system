@@ -97,9 +97,9 @@ class IncomeForm(forms.ModelForm):
         # تحديد الدورات المتاحة
         self.fields['course'].queryset = Course.objects.filter(is_active=True)
         
-        # تحديد المحصلين (كل المستخدمين النشطين)
+        # تحديد المحصلين (من طاقم العمل فقط)
         self.fields['collected_by'].queryset = User.objects.filter(
-            is_active=True
+            is_active=True, user_type__in=['employee', 'branch_manager', 'accountant']
         ).order_by('first_name', 'last_name')
         
         # لو المستخدم موظف عادي، نحدده كمحصل افتراضي
@@ -441,8 +441,9 @@ class ExcelStyleTransactionForm(forms.Form):
 
     collected_by = forms.ModelChoiceField(
         queryset=User.objects.filter(is_active=True),
-        required=False,
+        required=True,
         label='المحصل',
+        error_messages={'required': 'المحصل مطلوب لجميع أنواع العمليات'},
         widget=forms.Select(attrs={
             'class': 'form-select',
         })
@@ -516,18 +517,6 @@ class ExcelStyleTransactionForm(forms.Form):
             if income_date < min_date:
                 raise forms.ValidationError('التاريخ قديم جداً')
         return income_date
-
-    def clean(self):
-        cleaned_data = super().clean()
-        tx_type = cleaned_data.get('transaction_type')
-        collected_by = cleaned_data.get('collected_by')
-
-        # أنواع التسجيل الجديد (لازم يكون فيه محصل)
-        registration_types = ('registration', 'full_payment', 'full_fees', 'registration_fees')
-        if tx_type in registration_types and not collected_by:
-            self.add_error('collected_by', 'المحصل مطلوب في التسجيل الجديد')
-
-        return cleaned_data
 
 
 class ExcelImportForm(forms.Form):
