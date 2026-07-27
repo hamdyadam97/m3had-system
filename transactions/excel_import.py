@@ -311,6 +311,7 @@ def import_excel_expense_data(file_path, mapping, branch, user):
         'مستلزمات': 'supplies',
         'تسويق': 'marketing',
         'صيانة': 'maintenance',
+        'بنك': 'bank',
         'أخرى': 'other',
     }
 

@@ -613,6 +613,7 @@ class ExcelStyleExpenseForm(forms.Form):
         ('supplies', 'مستلزمات'),
         ('marketing', 'تسويق'),
         ('maintenance', 'صيانة'),
+        ('bank', 'البنك (مصروفات ورسوم بنكية دورية)'),
         ('other', 'أخرى'),
     ]
 
