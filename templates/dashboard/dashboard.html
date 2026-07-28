@@ -1,186 +1,115 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}لوحة التحكم - نظام إدارة المعاهد{% endblock %}
 
 {% block extra_css %}
 <style>
-    .admin-stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px;
-        padding: 20px;
-        transition: transform 0.3s;
-    }
-    .admin-stat-card:hover {
-        transform: translateY(-5px);
-    }
-    .admin-stat-card i {
-        font-size: 40px;
-        opacity: 0.8;
-    }
-    .admin-stat-card .number {
-        font-size: 32px;
-        font-weight: bold;
-    }
-    .admin-stat-card .label {
-        font-size: 14px;
-        opacity: 0.9;
-    }
-    
-    .chart-container {
-        background: white;
-        border-radius: 15px;
-        padding: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    .activity-item {
-        padding: 15px;
-        border-bottom: 1px solid #f0f2ff;
-        transition: background 0.3s;
-    }
-    .activity-item:hover {
-        background: #f8f9ff;
-    }
-    .activity-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 16px;
-    }
+    .stat-card { border-radius: 15px; padding: 20px; color: white; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card .number { font-size: 28px; font-weight: bold; }
+    .stat-card .label { font-size: 14px; opacity: 0.9; }
+    .stat-card i { font-size: 32px; opacity: 0.8; }
+
+    .bg-registration { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .bg-collection { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .bg-registered-students { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .bg-paid-students { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+    .bg-expense { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .bg-net { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+
+    #dashFilterBar.is-loading { opacity: 0.6; pointer-events: none; }
+    .activity-item { padding: 12px 15px; border-bottom: 1px solid #f0f2ff; }
+    .activity-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; }
     .activity-icon.income { background: linear-gradient(135deg, #11998e, #38ef7d); }
     .activity-icon.expense { background: linear-gradient(135deg, #eb3349, #f45c43); }
-    .activity-icon.student { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .activity-icon.user { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .report-table th, .report-table td { font-size: 14px; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i class="fas fa-tachometer-alt text-primary me-2"></i> لوحة التحكم</h2>
-    <span class="text-muted"><i class="fas fa-building me-1"></i> {{ user.branch.name|default:"جميع الفروع" }}</span>
 </div>
 
-<!-- إحصائيات عامة للنظام (للأدمن فقط) -->
-{% if user.is_superuser or user.is_admin %}
-<div class="row mb-4">
-    <div class="col-md-12 mb-3">
-        <h5 class="text-muted"><i class="fas fa-chart-pie me-2"></i> إحصائيات النظام</h5>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center">
-            <i class="fas fa-building mb-2"></i>
-            <div class="number">{{ total_branches|default:0 }}</div>
-            <div class="label">الفروع</div>
-        </div>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-            <i class="fas fa-users mb-2"></i>
-            <div class="number">{{ total_users|default:0 }}</div>
-            <div class="label">المستخدمين</div>
-        </div>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-            <i class="fas fa-book-open mb-2"></i>
-            <div class="number">{{ total_courses|default:0 }}</div>
-            <div class="label">الدورات</div>
-        </div>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-            <i class="fas fa-user-graduate mb-2"></i>
-            <div class="number">{{ total_students|default:0 }}</div>
-            <div class="label">الطلاب</div>
-        </div>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-            <i class="fas fa-money-bill-wave mb-2"></i>
-            <div class="number">{{ total_income_month|floatformat:0|default:0 }}</div>
-            <div class="label">إيرادات الشهر</div>
-        </div>
-    </div>
-    <div class="col-md-2 col-6 mb-3">
-        <div class="admin-stat-card text-center" style="background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%); color: #333;">
-            <i class="fas fa-wallet mb-2"></i>
-            <div class="number">{{ total_expense_month|floatformat:0|default:0 }}</div>
-            <div class="label">مصروفات الشهر</div>
-        </div>
-    </div>
-</div>
-{% endif %}
-
-<!-- إحصائيات اليوم -->
-<div class="row mb-4">
-    <div class="col-md-12 mb-3">
-        <h5 class="text-muted"><i class="fas fa-calendar-day me-2"></i> إحصائيات اليوم</h5>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-1">إيرادات اليوم</h6>
-                        <h3 class="mb-0">{{ today_income|floatformat:2 }}</h3>
-                    </div>
-                    <i class="fas fa-money-bill-wave fa-2x opacity-50"></i>
-                </div>
+<!-- شريط الفلاتر -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end" id="dashFilterBar">
+            <div class="col-md-2" id="dashBranchWrap">
+                <label class="form-label small">الفرع</label>
+                <select id="filterBranch" class="form-select form-select-sm"></select>
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card warning">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-1">مصروفات اليوم</h6>
-                        <h3 class="mb-0">{{ today_expenses|floatformat:2 }}</h3>
-                    </div>
-                    <i class="fas fa-wallet fa-2x opacity-50"></i>
-                </div>
+            <div class="col-md-2">
+                <label class="form-label small">من تاريخ</label>
+                <input type="date" id="filterStartDate" class="form-control form-control-sm">
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card success">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-1">الصافي اليوم</h6>
-                        <h3 class="mb-0">{{ today_net|floatformat:2 }}</h3>
-                    </div>
-                    <i class="fas fa-chart-line fa-2x opacity-50"></i>
-                </div>
+            <div class="col-md-2">
+                <label class="form-label small">إلى تاريخ</label>
+                <input type="date" id="filterEndDate" class="form-control form-control-sm">
             </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card stat-card info">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-1">التسجيلات اليوم</h6>
-                        <h3 class="mb-0">{{ today_registrations|default:0 }}</h3>
-                    </div>
-                    <i class="fas fa-user-plus fa-2x opacity-50"></i>
-                </div>
+            <div class="col-md-1">
+                <label class="form-label small">الشهر</label>
+                <select id="filterMonth" class="form-select form-select-sm">
+                    <option value="1">يناير</option>
+                    <option value="2">فبراير</option>
+                    <option value="3">مارس</option>
+                    <option value="4">أبريل</option>
+                    <option value="5">مايو</option>
+                    <option value="6">يونيو</option>
+                    <option value="7">يوليو</option>
+                    <option value="8">أغسطس</option>
+                    <option value="9">سبتمبر</option>
+                    <option value="10">أكتوبر</option>
+                    <option value="11">نوفمبر</option>
+                    <option value="12">ديسمبر</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small">السنة</label>
+                <input type="number" id="filterYear" class="form-control form-control-sm" min="2020" max="2100">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">الدورة</label>
+                <select id="filterCourse" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">الموظف</label>
+                <select id="filterEmployee" class="form-select form-select-sm"></select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">حالة الدفع</label>
+                <select id="filterPaymentStatus" class="form-select form-select-sm">
+                    <option value="all">الكل</option>
+                    <option value="paid">مكتمل الدفع (له قسط)</option>
+                    <option value="unpaid">غير مكتمل (تسجيل فقط)</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="button" id="filterResetBtn" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="fas fa-rotate-left me-1"></i> إعادة تعيين
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- الرسوم البيانية وآخر النشاطات -->
+<!-- البطاقات -->
+<div class="row mb-4" id="dash-cards"></div>
+
+<!-- الهدف الشهري -->
+<div id="dash-target" class="mb-4"></div>
+
+<!-- الرسم البياني وآخر النشاطات -->
 <div class="row mb-4">
     <div class="col-md-8">
-        <div class="chart-container">
-            <h5 class="mb-3"><i class="fas fa-chart-bar text-primary me-2"></i> الإيرادات والمصروفات (آخر 7 أيام)</h5>
-            <canvas id="incomeExpenseChart" height="100"></canvas>
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar text-primary me-2"></i> الإيرادات والمصروفات</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="incomeExpenseChart" height="100"></canvas>
+            </div>
         </div>
     </div>
     <div class="col-md-4">
@@ -188,84 +117,8 @@
             <div class="card-header bg-white">
                 <h5 class="mb-0"><i class="fas fa-history text-primary me-2"></i> آخر النشاطات</h5>
             </div>
-            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                {% for activity in recent_activities %}
-                <div class="activity-item">
-                    <div class="d-flex align-items-center">
-                        <div class="activity-icon {{ activity.type }} me-3">
-                            <i class="fas {{ activity.icon }}"></i>
-                        </div>
-                        <div class="flex-grow-1">
-                            <div class="fw-bold">{{ activity.title }}</div>
-                            <small class="text-muted">{{ activity.description }}</small>
-                        </div>
-                        <small class="text-muted">{{ activity.time }}</small>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="text-center py-4 text-muted">
-                    <i class="fas fa-inbox fa-2x mb-2"></i>
-                    <p>لا توجد نشاطات حديثة</p>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- إحصائيات الشهر -->
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="fas fa-calendar-alt text-primary me-2"></i> إحصائيات الشهر</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 text-center border-end">
-                        <h6 class="text-muted">الهدف الشهري</h6>
-                        <h4 class="text-primary">{{ monthly_target|floatformat:2 }}</h4>
-                    </div>
-                    <div class="col-md-4 text-center border-end">
-                        <h6 class="text-muted">التحصيل الفعلي</h6>
-                        <h4 class="text-success">{{ monthly_income|floatformat:2 }}</h4>
-                    </div>
-                    <div class="col-md-4 text-center">
-                        <h6 class="text-muted">نسبة الإنجاز</h6>
-                        <h4 class="{% if achievement_percentage >= 100 %}text-success{% else %}text-warning{% endif %}">
-                            {{ achievement_percentage }}%
-                        </h4>
-                    </div>
-                </div>
-                <div class="mt-3">
-                    <div class="progress" style="height: 25px;">
-                        <div class="progress-bar {% if achievement_percentage >= 100 %}bg-success{% else %}bg-warning{% endif %}" 
-                             role="progressbar" 
-                             style="width: {{ achievement_width }}%"
-                             aria-valuenow="{{ achievement_percentage|default:0 }}" 
-                             aria-valuemin="0" 
-                             aria-valuemax="100">
-                            {{ achievement_percentage }}%
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header bg-white">
-                <h5 class="mb-0"><i class="fas fa-users text-primary me-2"></i> الطلاب</h5>
-            </div>
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span>الطلاب الجدد (هذا الشهر)</span>
-                    <span class="badge bg-success">{{ new_students|default:0 }}</span>
-                </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>إجمالي الطلاب النشطين</span>
-                    <span class="badge bg-primary">{{ total_students|default:0 }}</span>
-                </div>
+            <div class="card-body p-0" style="max-height: 340px; overflow-y: auto;">
+                <div id="dash-activities"></div>
             </div>
         </div>
     </div>
@@ -282,191 +135,49 @@
                 <div class="row">
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'transactions:excel_style_transaction' %}" class="btn btn-primary w-100 py-3">
-                            <i class="fas fa-plus-circle fa-lg mb-2 d-block"></i>
-                            تسجيل إيراد جديد
+                            <i class="fas fa-plus-circle fa-lg mb-2 d-block"></i> تسجيل إيراد جديد
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'transactions:excel_style_expense' %}" class="btn btn-warning w-100 py-3 text-white">
-                            <i class="fas fa-minus-circle fa-lg mb-2 d-block"></i>
-                            تسجيل مصروف جديد
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="transactions:" class="btn btn-success w-100 py-3">
-                            <i class="fas fa-user-plus fa-lg mb-2 d-block"></i>
-                            إضافة دورة  جديد
+                            <i class="fas fa-minus-circle fa-lg mb-2 d-block"></i> تسجيل مصروف جديد
                         </a>
                     </div>
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'reports:daily_report' %}" class="btn btn-info w-100 py-3 text-white">
-                            <i class="fas fa-file-alt fa-lg mb-2 d-block"></i>
-                            التقرير اليومي
+                            <i class="fas fa-file-alt fa-lg mb-2 d-block"></i> التقرير اليومي
                         </a>
                     </div>
-                </div>
-                {% if user.is_superuser or user.is_admin %}
-                <div class="row mt-2">
-                    <div class="col-md-3 mb-3">
-                        <a href="{% url 'accounts:user_list' %}" class="btn btn-dark w-100 py-3">
-                            <i class="fas fa-user-shield fa-lg mb-2 d-block"></i>
-                            إدارة المستخدمين
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="{% url 'branches:branch_list' %}" class="btn btn-secondary w-100 py-3">
-                            <i class="fas fa-building fa-lg mb-2 d-block"></i>
-                            إدارة الفروع
-                        </a>
-                    </div>
-                    <div class="col-md-3 mb-3">
-                        <a href="{% url 'transactions:excel_style_transaction' %}" class="btn btn-outline-primary w-100 py-3">
-                            <i class="fas fa-table fa-lg mb-2 d-block"></i>
-                            تسجيل سريع
-                        </a>
-                    </div>
+                    {% if user.is_superuser or user.is_admin %}
                     <div class="col-md-3 mb-3">
                         <a href="{% url 'admin:index' %}" class="btn btn-outline-dark w-100 py-3">
-                            <i class="fas fa-cogs fa-lg mb-2 d-block"></i>
-                            إدارة النظام
+                            <i class="fas fa-cogs fa-lg mb-2 d-block"></i> إدارة النظام
                         </a>
                     </div>
+                    {% endif %}
                 </div>
-                {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-<!-- أداء الفروع (للأدمن والمدير الإقليمي) -->
-{% if is_global_view %}
-<div class="row mt-4">
-    <div class="col-md-12">
-        <div class="card shadow-sm">
-            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i> أداء الفروع</h5>
-                <span class="badge bg-light text-dark">{{ branches|length }} فرع</span>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>اسم الفرع</th>
-                                <th>إيراد اليوم</th>
-                                <th>إيراد الشهر</th>
-                                <th>الهدف الشهري</th>
-                                <th>نسبة الإنجاز</th>
-                                <th>الطلاب</th>
-                                <th>إجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for branch in branches_with_stats %}
-                            <tr>
-                                <td class="fw-bold">
-                                    <i class="fas fa-building text-primary me-2"></i>{{ branch.name }}
-                                </td>
-                                <td>{{ branch.today_income|floatformat:2 }}</td>
-                                <td>{{ branch.monthly_income|floatformat:2 }}</td>
-                                <td>{{ branch.monthly_target|floatformat:2 }}</td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="progress flex-grow-1 me-2" style="height: 10px;">
-                                            <div class="progress-bar {% if branch.achievement >= 100 %}bg-success{% elif branch.achievement >= 50 %}bg-info{% else %}bg-warning{% endif %}" 
-                                                 role="progressbar" 
-                                                 style="width: {{ branch.achievement_width }}%"></div>
-                                        </div>
-                                        <small>{{ branch.achievement|floatformat:0 }}%</small>
-                                    </div>
-                                </td>
-                                <td><span class="badge bg-light text-dark">{{ branch.students_count }}</span></td>
-                                <td>
-                                    <a href="{% url 'dashboard:branch_dashboard' branch.id %}" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-eye"></i> عرض
-                                    </a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="7" class="text-center py-4 text-muted">
-                                    <i class="fas fa-inbox fa-2x mb-2"></i>
-                                    <p>لا توجد فروع مضافة حالياً</p>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
+<!-- التقارير -->
+<div class="row" id="dash-reports"></div>
+
+<!-- مقارنة الفروع -->
+<div class="row mt-2" id="dash-branch-comparison"></div>
+
+{{ initial_data|json_script:"dashboard-initial-data" }}
 {% endblock %}
 
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{% static 'js/dashboard.js' %}"></script>
 <script>
-    // رسم بياني للإيرادات والمصروفات
-    const ctx = document.getElementById('incomeExpenseChart').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: {{ chart_labels|safe }},
-            datasets: [
-                {
-                    label: 'الإيرادات',
-                    data: {{ chart_income|safe }},
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: 'rgba(102, 126, 234, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'المصروفات',
-                    data: {{ chart_expense|safe }},
-                    backgroundColor: 'rgba(245, 87, 108, 0.8)',
-                    borderColor: 'rgba(245, 87, 108, 1)',
-                    borderWidth: 1,
-                    yAxisID: 'y1'
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return value.toLocaleString() + ' ر.س';
-                        }
-                    }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    beginAtZero: true,
-                    grid: {
-                        drawOnChartArea: false
-                    },
-                    ticks: {
-                        callback: function(value) {
-                            return value.toLocaleString() + ' ر.س';
-                        }
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'bottom'
-                }
-            }
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        initDashboard({
+            apiUrl: '{% url "dashboard:dashboard_data_api" %}',
+        });
     });
 </script>
 {% endblock %}
