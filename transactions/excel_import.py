@@ -45,8 +45,12 @@ def clean_course_name(name):
     return name
 
 
-def find_course_id(course_raw, courses_cache):
-    """البحث الذكي عن الدورة باستخدام matching مرن"""
+def find_course_id(course_raw, courses_cache, always_pick_closest=False):
+    """البحث الذكي عن الدورة باستخدام matching مرن.
+
+    always_pick_closest: لو معملش ولا حد من محاولات المطابقة الدقيقة نتيجة،
+    بيرجع أقرب دورة موجودة في النظام حتى لو نسبة التشابه ضعيفة (بدل ما يرفض الصف).
+    """
     cleaned_raw = clean_course_name(course_raw)
     if not cleaned_raw:
         return None
@@ -65,12 +69,13 @@ def find_course_id(course_raw, courses_cache):
 
     # محاولة 3: fuzzy matching باستخدام difflib
     import difflib
+    min_ratio = 0 if always_pick_closest else 0.6
     best_ratio = 0
     best_id = None
     for cname, cid in courses_cache.items():
         cleaned_cname = clean_course_name(cname)
         ratio = difflib.SequenceMatcher(None, cleaned_raw, cleaned_cname).ratio()
-        if ratio > best_ratio and ratio >= 0.6:
+        if ratio > best_ratio and ratio >= min_ratio:
             best_ratio = ratio
             best_id = cid
 
@@ -264,9 +269,9 @@ def import_excel_data(file_path, mapping, branch, user):
                     errors.append(f'صف {idx+1}: لا يمكن إضافة سعر بدون إضافة دورة')
                     continue
                 course_id = find_course_id(course_raw, courses_cache_branch) or \
-                    find_course_id(course_raw, courses_cache_all)
+                    find_course_id(course_raw, courses_cache_all, always_pick_closest=True)
                 if not course_id:
-                    errors.append(f'صف {idx+1}: الدورة "{course_raw}" غير مسجلة في النظام')
+                    errors.append(f'صف {idx+1}: لا توجد أي دورة مسجلة في النظام لمطابقة "{course_raw}"')
                     continue
 
             # ملاحظات إضافية
