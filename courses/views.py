@@ -8,7 +8,6 @@ from .models import Course
 
 
 @login_required
-@permission_required('courses.view_course', raise_exception=True)
 def course_list(request):
     """قائمة الدورات مع فلترة حسب الصلاحيات والفرع"""
     user = request.user
@@ -40,7 +39,6 @@ def course_list(request):
 
 
 @login_required
-@permission_required('courses.view_course', raise_exception=True)
 def course_detail(request, pk):
     """تفاصيل الدورة مع إحصائيات دقيقة حسب صلاحية الرؤية"""
     user = request.user
