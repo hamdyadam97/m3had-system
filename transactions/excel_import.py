@@ -136,15 +136,21 @@ def import_excel_data(file_path, mapping, branch, user):
     for c in Course.objects.filter(is_active=True).values('id', 'name'):
         courses_cache[c['name']] = c['id']
 
-    # المحصل لازم يكون من طاقم العمل (نفس قاعدة نموذج التسجيل السريع)
-    collectors_cache = {}
-    for u in User.objects.filter(
-        is_active=True, user_type__in=['employee', 'branch_manager', 'accountant']
-    ).values('id', 'first_name', 'last_name', 'username'):
-        collectors_cache[u['username']] = u['id']
-        full = f"{u['first_name'] or ''} {u['last_name'] or ''}".strip()
-        if full:
-            collectors_cache[full] = u['id']
+    # المحصل لازم يكون من طاقم العمل. بنفضل مطابقته داخل نفس فرع الاستيراد الأول
+    # (تقليل احتمال مطابقة اسم شبيه لموظف في فرع تاني بالغلط)، ولو مفيش تطابق
+    # داخل الفرع بنرجع نبحث في كل الموظفين (لحالة موظف بيحصل لفرع غير فرعه الأساسي)
+    def build_collectors_cache(qs):
+        cache = {}
+        for u in qs.values('id', 'first_name', 'last_name', 'username'):
+            cache[u['username']] = u['id']
+            full = f"{u['first_name'] or ''} {u['last_name'] or ''}".strip()
+            if full:
+                cache[full] = u['id']
+        return cache
+
+    staff_qs = User.objects.filter(is_active=True, user_type__in=['employee', 'branch_manager', 'accountant'])
+    collectors_cache_branch = build_collectors_cache(staff_qs.filter(branch=branch))
+    collectors_cache_all = build_collectors_cache(staff_qs)
 
     # --- قراءة البيانات بدون iterrows (أسرع) ---
     for idx, row in enumerate(df.values):
@@ -222,7 +228,8 @@ def import_excel_data(file_path, mapping, branch, user):
                 if not collector:
                     errors.append(f'صف {idx+1}: المحصل مطلوب')
                     continue
-                found_collector_id = find_collector_id(collector, collectors_cache)
+                found_collector_id = find_collector_id(collector, collectors_cache_branch) or \
+                    find_collector_id(collector, collectors_cache_all)
                 if not found_collector_id:
                     errors.append(f'صف {idx+1}: المحصل "{collector}" غير مسجل ضمن طاقم العمل')
                     continue
