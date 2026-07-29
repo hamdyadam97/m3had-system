@@ -132,9 +132,18 @@ def import_excel_data(file_path, mapping, branch, user):
     income_objects = []
 
     # --- Cache للدورات والمحصلين (تجنب query لكل صف) ---
-    courses_cache = {}
-    for c in Course.objects.filter(is_active=True).values('id', 'name'):
-        courses_cache[c['name']] = c['id']
+    # بنفضل مطابقة الدورة/الدبلومة داخل نفس فرع الاستيراد الأول (تقليل احتمال
+    # مطابقة دورة شبيهة الاسم في فرع تاني بالغلط)، ولو مفيش تطابق داخل الفرع
+    # بنرجع نبحث في كل الدورات (لحالة دورة مشتركة بين فروع أو غير مربوطة بالفرع ده)
+    def build_courses_cache(qs):
+        cache = {}
+        for c in qs.values('id', 'name'):
+            cache[c['name']] = c['id']
+        return cache
+
+    courses_qs = Course.objects.filter(is_active=True)
+    courses_cache_branch = build_courses_cache(courses_qs.filter(branches=branch))
+    courses_cache_all = build_courses_cache(courses_qs)
 
     # المحصل لازم يكون من طاقم العمل. بنفضل مطابقته داخل نفس فرع الاستيراد الأول
     # (تقليل احتمال مطابقة اسم شبيه لموظف في فرع تاني بالغلط)، ولو مفيش تطابق
@@ -254,7 +263,8 @@ def import_excel_data(file_path, mapping, branch, user):
                 if not course_raw:
                     errors.append(f'صف {idx+1}: لا يمكن إضافة سعر بدون إضافة دورة')
                     continue
-                course_id = find_course_id(course_raw, courses_cache)
+                course_id = find_course_id(course_raw, courses_cache_branch) or \
+                    find_course_id(course_raw, courses_cache_all)
                 if not course_id:
                     errors.append(f'صف {idx+1}: الدورة "{course_raw}" غير مسجلة في النظام')
                     continue
