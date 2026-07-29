@@ -14,7 +14,7 @@ class Course(models.Model):
     description = models.TextField(blank=True, verbose_name='الوصف')
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name='السعر')
     duration_days = models.PositiveIntegerField(default=30, verbose_name='المدة (بالأيام)')
-    branches = models.ManyToManyField(Branch, related_name='courses', verbose_name='الفروع المتاحة')
+    branches = models.ManyToManyField(Branch, related_name='courses', blank=True, verbose_name='الفروع المتاحة')
     is_active = models.BooleanField(default=True, verbose_name='نشطة')
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإنشاء')
     

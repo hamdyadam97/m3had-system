@@ -130,11 +130,9 @@ class CourseForm(forms.ModelForm):
         return description
 
     def clean_branches(self):
-        """التحقق من الفروع"""
+        """الدورات مشتركة بين كل الفروع، فاختيار الفروع هنا اختياري فقط"""
         branches = self.cleaned_data.get('branches')
-        if not branches:
-            raise forms.ValidationError('يجب اختيار فرع واحد على الأقل')
-        if branches.count() > 50:
+        if branches and branches.count() > 50:
             raise forms.ValidationError('لا يمكن اختيار أكثر من 50 فرع')
         return branches
 

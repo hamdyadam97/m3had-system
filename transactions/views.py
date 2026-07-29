@@ -123,14 +123,9 @@ def student_list(request):
                 'count': len(s['records']),
             })
 
-    # جلب الدورات للفلتر
+    # جلب الدورات للفلتر (مشتركة بين كل الفروع)
     from courses.models import Course
-    if user.is_superuser or user.is_admin():
-        courses = Course.objects.all()
-    elif user.user_type == 'regional_manager':
-        courses = Course.objects.filter(branches__in=user.managed_branches.all()).distinct()
-    else:
-        courses = Course.objects.filter(branches=user.branch) if user.branch else Course.objects.none()
+    courses = Course.objects.filter(is_active=True)
 
     return render(request, 'transactions/student_list.html', {
         'students_list': students_list,

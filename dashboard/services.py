@@ -92,9 +92,8 @@ def resolve_filters(request, user):
 
     branch_scope = Branch.objects.filter(id=selected_branch.id) if selected_branch else visible_branches
 
-    available_courses = Course.objects.filter(
-        branches__in=branch_scope, is_active=True
-    ).distinct().order_by('name')
+    # الدورات مشتركة بين كل الفروع، فمش بنفلترها حسب الفرع المختار
+    available_courses = Course.objects.filter(is_active=True).order_by('name')
     requested_course_id = _parse_int(request.GET.get('course'))
     selected_course = available_courses.filter(id=requested_course_id).first() if requested_course_id else None
 

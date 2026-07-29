@@ -9,27 +9,11 @@ from .models import Course
 
 @login_required
 def course_list(request):
-    """قائمة الدورات مع فلترة حسب الصلاحيات والفرع"""
-    user = request.user
-
-    # البداية بكل الدورات النشطة
+    """قائمة الدورات: مشتركة بين كل الفروع، بدون فلترة حسب الفرع"""
+    # الدورات مشتركة بين كل الفروع، فكل المستخدمين يشوفوا نفس القائمة
     course_queryset = Course.objects.filter(is_active=True).order_by('-id')
 
-    # 1. فلترة الفروع بناءً على نوع المستخدم (Scope)
-    if user.is_superuser or user.is_admin():
-        # الأدمن يرى كل الدورات في كل الفروع
-        pass
-    elif user.user_type == 'regional_manager':
-        # المدير الإقليمي يرى الدورات المتاحة في فروعه فقط
-        course_queryset = course_queryset.filter(branches__in=user.managed_branches.all()).distinct()
-    else:
-        # الموظف/مدير الفرع يرى دورات فرعه فقط
-        if user.branch:
-            course_queryset = course_queryset.filter(branches=user.branch)
-        else:
-            course_queryset = course_queryset.none()
-
-    # 2. تقسيم الصفحات (Pagination)
+    # تقسيم الصفحات (Pagination)
     paginator = Paginator(course_queryset, 10)  # 10 دورات في الصفحة
     page_number = request.GET.get('page')
     courses = paginator.get_page(page_number)
@@ -84,10 +68,6 @@ def course_create(request):
             course.save()  # 🔴 نحفظ الأول عشان نقدر نضيف M2M
             form.save_m2m()  # 🔴 نحفظ العلاقات Many-to-Many (branches)
 
-            # إذا كان موظف فرع، نربط الدورة بفرعه تلقائياً
-            if not request.user.is_admin() and request.user.branch:
-                course.branches.add(request.user.branch)
-
             messages.success(request, 'تم إنشاء الدورة بنجاح.')
             return redirect('courses:course_list')
         else:
@@ -110,11 +90,6 @@ def course_create(request):
 def course_edit(request, pk):
     """تعديل دورة"""
     course = get_object_or_404(Course, pk=pk)
-
-    # حماية: منع موظف فرع من تعديل دورة ليست في فرعه
-    if not request.user.is_admin() and request.user.branch not in course.branches.all():
-        messages.error(request, "ليس لديك صلاحية لتعديل هذه الدورة.")
-        return redirect('courses:course_list')
 
     if request.method == 'POST':
         form = CourseForm(request.POST, instance=course)
@@ -148,19 +123,9 @@ from weasyprint import HTML
 from datetime import date
 
 
-# --- دالة مساعدة للحصول على الدورات المفلترة حسب الصلاحية ---
+# --- دالة مساعدة للحصول على الدورات (مشتركة بين كل الفروع) ---
 def get_filtered_courses(request):
-    user = request.user
-    queryset = Course.objects.filter(is_active=True).order_by('-id')
-
-    if not (user.is_superuser or user.is_admin()):
-        if user.user_type == 'regional_manager':
-            queryset = queryset.filter(branches__in=user.managed_branches.all()).distinct()
-        elif user.branch:
-            queryset = queryset.filter(branches=user.branch)
-        else:
-            queryset = queryset.none()
-    return queryset
+    return Course.objects.filter(is_active=True).order_by('-id')
 
 
 # --- تصدير الدورات إلى Excel ---
