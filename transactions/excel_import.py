@@ -208,26 +208,30 @@ def import_excel_data(file_path, mapping, branch, user):
             if date_val is None:
                 date_val = timezone.now().date()
 
-            # نوع العملية: أي حاجة غير "تسجيل" تبقى قسط
-            tx_type = ''
+            # نوع العملية: لازم تكون "تسجيل" أو "تحصيل" فقط، غير كدة الصف مرفوض
             if mapping.get('transaction_type') is not None:
                 tx_type = str(values[mapping['transaction_type']]).strip()
-
-            if 'تسجيل' in tx_type:
-                income_type = 'registration'
+                if 'تسجيل' in tx_type:
+                    income_type = 'registration'
+                elif 'تحصيل' in tx_type:
+                    income_type = 'installment'
+                else:
+                    errors.append(f'صف {idx+1}: نوع العملية "{tx_type}" غير صحيح (يجب أن يكون "تسجيل" أو "تحصيل")')
+                    continue
             else:
+                # لا يوجد عمود نوع عملية في الملف: كل الصفوف تحصيل افتراضياً
                 income_type = 'installment'
 
-            # طريقة الدفع
+            # طريقة الدفع: مدى / بنك / كاش فقط
             payment_method = 'mada'
             if mapping.get('payment_method') is not None:
                 pm = str(values[mapping['payment_method']]).strip().lower()
-                if 'فيزا' in pm or 'visa' in pm:
-                    payment_method = 'visa'
-                elif 'ماستر' in pm or 'master' in pm:
-                    payment_method = 'mastercard'
-                elif 'تحويل' in pm or 'bank' in pm:
+                if 'بنك' in pm or 'تحويل' in pm or 'bank' in pm:
                     payment_method = 'bank_transfer'
+                elif 'كاش' in pm or 'نقد' in pm or 'cash' in pm:
+                    payment_method = 'cash'
+                elif 'مدى' in pm or 'mada' in pm:
+                    payment_method = 'mada'
 
             # مدينة
             city = ''

@@ -12,9 +12,8 @@ class Income(models.Model):
     
     PAYMENT_METHOD_CHOICES = [
         ('mada', 'مدى'),
-        ('visa', 'فيزا'),
-        ('mastercard', 'ماستر'),
-        ('bank_transfer', 'تحويل بنكي'),
+        ('bank_transfer', 'بنك'),
+        ('cash', 'كاش'),
     ]
     
     PAYMENT_LOCATION_CHOICES = [
@@ -34,7 +33,7 @@ class Income(models.Model):
 
     # طريقة الدفع
     payment_method = models.CharField(max_length=15, choices=PAYMENT_METHOD_CHOICES, verbose_name='طريقة الدفع')
-    payment_location = models.CharField(max_length=10, choices=PAYMENT_LOCATION_CHOICES, verbose_name='مكان الدفع')
+    payment_location = models.CharField(max_length=10, choices=PAYMENT_LOCATION_CHOICES, default='in_person', verbose_name='مكان الدفع')
     
     # بيانات التحويل البنكي
     bank_account_number = models.CharField(max_length=50, blank=True, null=True, verbose_name='رقم الحساب البنكي')

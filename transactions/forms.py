@@ -344,15 +344,13 @@ class ExcelStyleTransactionForm(forms.Form):
 
     TRANSACTION_TYPE_CHOICES = [
         ('registration', 'تسجيل'),
-        ('installment', 'دفعه'),
-
+        ('installment', 'تحصيل'),
     ]
 
     PAYMENT_METHOD_CHOICES = [
         ('mada', 'مدى'),
-        ('visa', 'فيزا'),
-        ('mastercard', 'ماستر'),
-        ('bank_transfer', 'تحويل بنكي'),
+        ('bank_transfer', 'بنك'),
+        ('cash', 'كاش'),
         ('', '---'),
     ]
 

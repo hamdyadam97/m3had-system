@@ -233,6 +233,12 @@ def daily_summary(request):
     reg_income = income_data.filter(income_type='registration').aggregate(total=Sum('amount'))['total'] or 0
     ins_income = income_data.filter(income_type='installment').aggregate(total=Sum('amount'))['total'] or 0
 
+    by_method = income_data.aggregate(
+        cash=Sum('amount', filter=Q(payment_method='cash')),
+        mada=Sum('amount', filter=Q(payment_method='mada')),
+        bank=Sum('amount', filter=Q(payment_method='bank_transfer')),
+    )
+
     context = {
         'date': today,
         'branches': branches,
@@ -241,6 +247,9 @@ def daily_summary(request):
         'today_net': total_income - total_expenses,
         'registration_income': reg_income,
         'installment_income': ins_income,
+        'cash_income': by_method['cash'] or 0,
+        'mada_income': by_method['mada'] or 0,
+        'bank_income': by_method['bank'] or 0,
         'is_multi_branch': branches.count() > 1,
     }
 
