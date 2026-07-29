@@ -210,21 +210,79 @@ def course_import_excel(request):
         file = request.FILES['excel_file']
         try:
             df = pd.read_excel(file)
-            for _, row in df.iterrows():
+        except Exception as e:
+            messages.error(request, f'خطأ في قراءة الملف: {e}')
+            return redirect('courses:course_list')
+
+        type_map = {'دبلوم': 'diploma', 'دبلومة': 'diploma', 'دورة': 'course'}
+        imported = 0
+        errors = []
+
+        for idx, row in df.iterrows():
+            excel_row = idx + 2  # +2: صف الـ header + الفهرسة تبدأ من 0
+            try:
+                code = str(row.get('كود الدورة', '')).strip()
+                name = str(row.get('اسم الدورة', '')).strip()
+                if not code or code.lower() == 'nan':
+                    errors.append(f'صف {excel_row}: كود الدورة مطلوب')
+                    continue
+                if not name or name.lower() == 'nan':
+                    errors.append(f'صف {excel_row}: اسم الدورة مطلوب')
+                    continue
+                if Course.objects.filter(code=code).exists():
+                    errors.append(f'صف {excel_row}: الكود "{code}" مستخدم بالفعل')
+                    continue
+
+                type_raw = str(row.get('النوع', '')).strip()
+                course_type = type_map.get(type_raw, 'course')
+
+                price = row.get('السعر', 0)
+                price = float(price) if pd.notna(price) else 0
+
+                duration = row.get('المدة (أيام)', row.get('المدة', 30))
+                duration = int(duration) if pd.notna(duration) else 30
+
+                description = row.get('الوصف', '')
+                description = str(description).strip() if pd.notna(description) else ''
+
                 course = Course.objects.create(
-                    code=row['كود الدورة'],
-                    name=row['اسم الدورة'],
-                    course_type='course',  # أو حسب القيمة في الملف
-                    price=row['السعر'],
-                    duration_days=row['المدة'],
-                    description=row.get('الوصف', '')
+                    code=code,
+                    name=name,
+                    course_type=course_type,
+                    price=price,
+                    duration_days=duration,
+                    description=description,
                 )
                 # إذا كان المستخدم يتبع فرعاً معيناً نربط الدورة به تلقائياً
                 if not request.user.is_superuser and request.user.branch:
                     course.branches.add(request.user.branch)
-            messages.success(request, 'تم استيراد الدورات بنجاح!')
-        except Exception as e:
-            messages.error(request, f'خطأ في الاستيراد: {e}')
+                imported += 1
+            except Exception as e:
+                errors.append(f'صف {excel_row}: {e}')
+
+        if imported:
+            messages.success(request, f'تم استيراد {imported} دورة بنجاح!')
+        for err in errors[:10]:
+            messages.warning(request, err)
+        if len(errors) > 10:
+            messages.warning(request, f'و{len(errors) - 10} خطأ إضافي لم يتم عرضهم.')
+
     return redirect('courses:course_list')
+
+
+# --- تحميل نموذج Excel لاستيراد الدورات ---
+@login_required
+def download_course_template(request):
+    columns = ['كود الدورة', 'اسم الدورة', 'النوع', 'السعر', 'المدة (أيام)', 'الوصف']
+    rows = [
+        ['CRS-101', 'دورة السلامة المهنية', 'دورة', 500, 30, 'دورة تدريبية عامة'],
+        ['DIP-201', 'دبلوم إدارة الموارد البشرية', 'دبلوم', 3000, 90, 'برنامج دبلوم متكامل'],
+    ]
+    df = pd.DataFrame(rows, columns=columns)
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="courses_import_template.xlsx"'
+    with pd.ExcelWriter(response, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='الدورات')
+    return response
 
 

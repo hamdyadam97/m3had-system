@@ -14,4 +14,5 @@ urlpatterns = [
     path('export/excel/', views.course_export_excel, name='course_export_excel'),
     path('export/pdf/', views.course_export_pdf, name='course_export_pdf'),
     path('import/excel/', views.course_import_excel, name='course_import_excel'),
+    path('import/template/', views.download_course_template, name='download_course_template'),
 ]

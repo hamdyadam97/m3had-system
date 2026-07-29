@@ -36,7 +36,10 @@
                 <div class="modal-header"><h5>استيراد دورات من ملف Excel</h5></div>
                 <div class="modal-body">
                     <input type="file" name="excel_file" class="form-control" required accept=".xlsx, .xls">
-                    <p class="small text-muted mt-2">الأعمدة المطلوبة: كود الدورة، اسم الدورة، السعر، المدة</p>
+                    <p class="small text-muted mt-2">الأعمدة: كود الدورة، اسم الدورة، النوع (دورة/دبلوم)، السعر، المدة (أيام)، الوصف (اختياري)</p>
+                    <a href="{% url 'courses:download_course_template' %}" class="small">
+                        <i class="fas fa-download"></i> تحميل نموذج فارغ
+                    </a>
                 </div>
                 <div class="modal-footer">
                     <button type="submit" class="btn btn-primary">رفع ومعالجة</button>
