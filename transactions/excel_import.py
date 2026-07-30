@@ -10,6 +10,16 @@ from django.db import transaction
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+
+def safe_str(val):
+    """يحول قيمة خلية Excel لنص، ومعاملة الخلايا الفارغة/NaN كنص فارغ حقيقي
+    (str(nan) بترجع 'nan' كنص غير فارغ لو ماتعامل معاها كده أول حاجة)"""
+    if pd.isna(val):
+        return ''
+    return str(val).strip()
+
+
 def parse_excel_preview(file_path, sheet_name=0):
     """قراءة كل صفوف ملف Excel لعرض preview"""
     try:
@@ -164,14 +174,14 @@ def import_excel_data(file_path, mapping, branch, user):
             # الاسم
             party_name = ''
             if mapping.get('party_name') is not None:
-                party_name = str(values[mapping['party_name']]).strip()
+                party_name = safe_str(values[mapping['party_name']])
             if not party_name:
                 continue
 
             # رقم الهوية / الملف
             id_number = ''
             if mapping.get('id_number') is not None:
-                id_number = str(values[mapping['id_number']]).strip()
+                id_number = safe_str(values[mapping['id_number']])
 
             # المبلغ
             amount = None
@@ -200,7 +210,7 @@ def import_excel_data(file_path, mapping, branch, user):
 
             # نوع العملية: لازم تكون "تسجيل" أو "تحصيل" فقط، غير كدة الصف مرفوض
             if mapping.get('transaction_type') is not None:
-                tx_type = str(values[mapping['transaction_type']]).strip()
+                tx_type = safe_str(values[mapping['transaction_type']])
                 if 'تسجيل' in tx_type:
                     income_type = 'registration'
                 elif 'تحصيل' in tx_type:
@@ -215,7 +225,7 @@ def import_excel_data(file_path, mapping, branch, user):
             # طريقة الدفع: مدى / بنك / كاش فقط
             payment_method = 'mada'
             if mapping.get('payment_method') is not None:
-                pm = str(values[mapping['payment_method']]).strip().lower()
+                pm = safe_str(values[mapping['payment_method']]).lower()
                 if 'بنك' in pm or 'تحويل' in pm or 'bank' in pm:
                     payment_method = 'bank_transfer'
                 elif 'كاش' in pm or 'نقد' in pm or 'cash' in pm:
@@ -226,13 +236,13 @@ def import_excel_data(file_path, mapping, branch, user):
             # مدينة
             city = ''
             if mapping.get('city') is not None:
-                city = str(values[mapping['city']]).strip()
+                city = safe_str(values[mapping['city']])
 
             # محصل: مطلوب دائماً ولازم يكون من طاقم العمل
             collector = ''
             collected_by_user_id = None
             if mapping.get('collector_name') is not None:
-                collector = str(values[mapping['collector_name']]).strip()
+                collector = safe_str(values[mapping['collector_name']])
                 if not collector:
                     errors.append(f'صف {idx+1}: المحصل مطلوب')
                     continue
@@ -253,12 +263,12 @@ def import_excel_data(file_path, mapping, branch, user):
             # رقم العملية
             tx_num = ''
             if mapping.get('transaction_number') is not None:
-                tx_num = str(values[mapping['transaction_number']]).strip()
+                tx_num = safe_str(values[mapping['transaction_number']])
 
             # الدورة / الدبلومة: لازم تكون مسجلة بالفعل في النظام (بدون إنشاء تلقائي)
             course_id = None
             if mapping.get('course') is not None:
-                course_raw = str(values[mapping['course']]).strip()
+                course_raw = safe_str(values[mapping['course']])
                 if not course_raw:
                     errors.append(f'صف {idx+1}: لا يمكن إضافة سعر بدون إضافة دورة')
                     continue
@@ -316,6 +326,8 @@ def import_excel_expense_data(file_path, mapping, branch, user):
     errors = []
     expense_objects = []
 
+    # الترتيب مهم: الكلمات المفتاحية الأكثر تحديداً لازم تتفحص قبل الأعم منها
+    # (مثلاً "صيانة سيارات" قبل "صيانة" لوحدها) عشان متتلخبطش المطابقة
     category_map = {
         'رواتب': 'salaries',
         'إيجار': 'rent',
@@ -323,12 +335,45 @@ def import_excel_expense_data(file_path, mapping, branch, user):
         'كهرباء': 'utilities',
         'مياه': 'utilities',
         'إنترنت': 'utilities',
+        'أدوات مكتبية': 'office_supplies',
+        'مكتبية': 'office_supplies',
         'مستلزمات': 'supplies',
         'تسويق': 'marketing',
+        'صيانة سيارات': 'car_maintenance',
+        'سيارات': 'car_maintenance',
         'صيانة': 'maintenance',
         'بنك': 'bank',
+        'ضيافة': 'hospitality',
+        'انتقالات': 'transportation',
+        'تذاكر': 'transportation',
+        'حجز': 'transportation',
+        'حكومية': 'government',
+        'محروقات': 'fuel',
+        'بنزين': 'fuel',
+        'وقود': 'fuel',
+        'عمومية': 'general_admin',
+        'إدارية': 'general_admin',
         'أخرى': 'other',
     }
+
+    def find_expense_category(cat_raw):
+        """يطابق الفئة بالكلمات المفتاحية أولاً، ولو مفيش تطابق يجرب أقرب فئة
+        بالتشابه النصي، ولو حتى ده مفيش تطابق كافي بيسيبها لـ 'أخرى'"""
+        if not cat_raw:
+            return None
+        for key, val in category_map.items():
+            if key in cat_raw:
+                return val
+
+        import difflib
+        best_ratio = 0
+        best_val = None
+        for value, label in Expense.EXPENSE_CATEGORY_CHOICES:
+            ratio = difflib.SequenceMatcher(None, cat_raw, label).ratio()
+            if ratio > best_ratio and ratio >= 0.45:
+                best_ratio = ratio
+                best_val = value
+        return best_val
 
     for idx, row in enumerate(df.values):
         try:
@@ -336,8 +381,9 @@ def import_excel_expense_data(file_path, mapping, branch, user):
 
             description = ''
             if mapping.get('description') is not None:
-                description = str(values[mapping['description']]).strip()
+                description = safe_str(values[mapping['description']])
             if not description:
+                errors.append(f'صف {idx+1}: البند مطلوب')
                 continue
 
             amount = None
@@ -365,15 +411,14 @@ def import_excel_expense_data(file_path, mapping, branch, user):
 
             category = 'other'
             if mapping.get('category') is not None:
-                cat_raw = str(values[mapping['category']]).strip()
-                for key, val in category_map.items():
-                    if key in cat_raw:
-                        category = val
-                        break
+                cat_raw = safe_str(values[mapping['category']])
+                matched_category = find_expense_category(cat_raw)
+                if matched_category:
+                    category = matched_category
 
             receipt = ''
             if mapping.get('receipt_number') is not None:
-                receipt = str(values[mapping['receipt_number']]).strip()
+                receipt = safe_str(values[mapping['receipt_number']])
 
             notes = ''
             if mapping.get('notes') is not None:

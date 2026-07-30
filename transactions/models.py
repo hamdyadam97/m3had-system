@@ -76,6 +76,13 @@ class Expense(models.Model):
         ('marketing', 'تسويق'),
         ('maintenance', 'صيانة'),
         ('bank', 'البنك (مصروفات ورسوم بنكية دورية)'),
+        ('hospitality', 'ضيافة'),
+        ('office_supplies', 'أدوات مكتبية'),
+        ('transportation', 'انتقالات (حجز تذاكر)'),
+        ('government', 'مصروفات حكومية'),
+        ('fuel', 'محروقات (بنزين)'),
+        ('car_maintenance', 'صيانة سيارات'),
+        ('general_admin', 'مصروفات عمومية وإدارية'),
         ('other', 'أخرى'),
     ]
     
