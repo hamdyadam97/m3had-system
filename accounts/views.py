@@ -155,16 +155,29 @@ def profile(request):
 def admin_only(user):
     return user.is_superuser or user.is_admin()
 
+
+def get_visible_staff(user, queryset=None):
+    """طاقم العمل المرئي: الأدمن يشوف الكل، المدير الإقليمي يشوف فروعه،
+    وأي موظف تاني يشوف بس زملاءه في نفس فرعه."""
+    qs = queryset if queryset is not None else User.objects.all()
+    if user.is_superuser or user.is_admin():
+        return qs
+    if user.user_type == 'regional_manager':
+        return qs.filter(branch__in=user.managed_branches.all())
+    return qs.filter(branch=user.branch) if user.branch else qs.none()
+
 # 1. قائمة المستخدمين
 @login_required
-@user_passes_test(admin_only)
 def user_list(request):
     from django.db.models import Q
     from branches.models import Branch
-    
-    # بدء الاستعلام الأساسي
-    users = User.objects.all().select_related('branch').prefetch_related('groups')
-    
+
+    user = request.user
+    can_manage_staff = user.is_superuser or user.is_admin()
+
+    # بدء الاستعلام الأساسي (مقصور على نطاق رؤية المستخدم: فرعه فقط لو مش أدمن)
+    users = get_visible_staff(user, User.objects.all().select_related('branch').prefetch_related('groups'))
+
     # ====== البحث المتقدم ======
     search_name = request.GET.get('name', '')
     search_type = request.GET.get('user_type', '')
@@ -216,6 +229,7 @@ def user_list(request):
         'branches': branches,
         'groups': groups,
         'user_types': user_types,
+        'can_manage_staff': can_manage_staff,
         # إعادة قيم البحث للقالب
         'search_name': search_name,
         'search_type': search_type,
@@ -319,8 +333,8 @@ def user_profile(request):
 # --- تصدير الموظفين إلى Excel ---
 @login_required
 def export_users_excel(request):
-    # جلب البيانات الأساسية للموظفين
-    users = User.objects.all().values(
+    # جلب البيانات الأساسية للموظفين (مقصورة على نطاق رؤية المستخدم)
+    users = get_visible_staff(request.user).values(
         'username', 'first_name', 'last_name', 'email', 'user_type', 'branch__name', 'phone', 'is_active'
     )
     df = pd.DataFrame(list(users))
@@ -348,7 +362,7 @@ def export_users_excel(request):
 # --- تصدير الموظفين إلى PDF ---
 @login_required
 def export_users_pdf(request):
-    users = User.objects.all().select_related('branch')
+    users = get_visible_staff(request.user, User.objects.select_related('branch'))
     context = {
         'staff_list': users,
         'title': 'تقرير طاقم العمل والمديرين',
