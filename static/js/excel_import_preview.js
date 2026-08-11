@@ -74,6 +74,16 @@
             return wrap;
         }
 
+        function removeRow(row) {
+            var idx = stagedRows.indexOf(row);
+            if (idx === -1) return;
+            stagedRows.splice(idx, 1);
+            var maxPage = Math.max(0, Math.ceil(stagedRows.length / pageSize) - 1);
+            currentPage = Math.min(currentPage, maxPage);
+            renderPage();
+            renderSummary();
+        }
+
         function renderPage() {
             tbody.innerHTML = '';
             var start = currentPage * pageSize;
@@ -92,6 +102,20 @@
                     td.appendChild(cellControl(row, field));
                     tr.appendChild(td);
                 });
+
+                var actionTd = document.createElement('td');
+                var delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'btn btn-sm btn-outline-danger';
+                delBtn.title = 'حذف هذا الصف نهائياً من الاستيراد';
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.addEventListener('click', function () {
+                    if (window.confirm('حذف هذا الصف من الملف المستورد؟ لن يتم اعتماده أو رفعه نهائياً.')) {
+                        removeRow(row);
+                    }
+                });
+                actionTd.appendChild(delBtn);
+                tr.appendChild(actionTd);
 
                 tbody.appendChild(tr);
             });
@@ -120,6 +144,11 @@
         }
 
         function renderSummary() {
+            if (stagedRows.length === 0) {
+                summaryEl.innerHTML = '<span class="text-muted"><i class="fas fa-circle-info"></i> لا يوجد أي صفوف لاعتمادها (تم حذفها كلها)</span>';
+                commitBtn.disabled = true;
+                return;
+            }
             var invalidCount = stagedRows.filter(function (r) { return !r.is_valid; }).length;
             if (invalidCount === 0) {
                 summaryEl.innerHTML = '<span class="text-success"><i class="fas fa-circle-check"></i> جميع بيانات الملف صحيحة وجاهزة للاعتماد (' + stagedRows.length + ' صف)</span>';
@@ -130,20 +159,23 @@
             }
         }
 
+        function fetchValidation(rows) {
+            return fetch(options.revalidateUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify({
+                    token: options.token,
+                    rows: rows.map(function (r) { return { data: r.data }; }),
+                }),
+            }).then(function (r) { return r.json(); });
+        }
+
         function revalidate() {
             revalidateBtn.disabled = true;
             var original = revalidateBtn.innerHTML;
             revalidateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جارٍ التحقق...';
 
-            fetch(options.revalidateUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({
-                    token: options.token,
-                    rows: stagedRows.map(function (r) { return { data: r.data }; }),
-                }),
-            })
-                .then(function (r) { return r.json(); })
+            fetchValidation(stagedRows)
                 .then(function (resp) {
                     if (resp.rows) {
                         stagedRows = resp.rows;
@@ -165,17 +197,32 @@
         }
 
         function commit() {
+            if (!stagedRows.length) return;
             commitBtn.disabled = true;
             var original = commitBtn.innerHTML;
             commitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جارٍ الاعتماد...';
 
-            fetch(options.commitUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
-                body: JSON.stringify({ token: options.token }),
-            })
-                .then(function (r) { return r.json(); })
+            // نزامن السيرفر أولاً بأحدث حالة عندنا (خصوصاً لو المستخدم حذف
+            // صف ولسه مضغطش "إعادة التحقق")، عشان السيرفر ميعتمدش على نسخة
+            // قديمة من البيانات المرحّلة
+            fetchValidation(stagedRows)
+                .then(function (syncResp) {
+                    if (!syncResp.rows) throw new Error('sync failed');
+                    stagedRows = syncResp.rows;
+                    if (!syncResp.all_valid) {
+                        renderPage();
+                        renderSummary();
+                        if (window.showError) window.showError('تم اكتشاف تغييرات إضافية أثناء المزامنة، يرجى مراجعة الأخطاء.');
+                        return null;
+                    }
+                    return fetch(options.commitUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                        body: JSON.stringify({ token: options.token }),
+                    }).then(function (r) { return r.json(); });
+                })
                 .then(function (resp) {
+                    if (!resp) return;
                     if (resp.success) {
                         if (window.showSuccess) window.showSuccess('تم اعتماد ورفع ' + resp.imported + ' سجل بنجاح.');
                         window.location.href = options.redirectUrl;
