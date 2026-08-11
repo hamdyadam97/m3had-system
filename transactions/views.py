@@ -1,4 +1,5 @@
 import logging
+import json
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
@@ -349,7 +350,13 @@ def excel_style_transaction(request):
 import os
 import tempfile
 from .forms import ExcelImportForm, ExcelMappingForm
-from .excel_import import parse_excel_preview, import_excel_data, import_excel_expense_data
+from .excel_import import (
+    parse_excel_preview, parse_rows_for_preview,
+    run_income_validation, create_income_records, INCOME_FIELDS,
+    run_expense_validation, create_expense_records, EXPENSE_FIELDS,
+    save_staged_import, load_staged_import, update_staged_rows, delete_staged_import,
+    cleanup_stale_staged_imports,
+)
 
 
 @login_required
@@ -400,7 +407,7 @@ def excel_import(request):
                 mapping_form = ExcelMappingForm(initial={
                     'temp_file': temp_path,
                     'branch': branch.id,
-                    'step': 'import',
+                    'step': 'preview',
                     **initial_mapping
                 })
 
@@ -414,7 +421,7 @@ def excel_import(request):
                     'step': 'mapping',
                 })
 
-        elif step == 'import':
+        elif step == 'preview':
             mapping_form = ExcelMappingForm(request.POST)
             if mapping_form.is_valid():
                 temp_path = mapping_form.cleaned_data['temp_file']
@@ -425,7 +432,7 @@ def excel_import(request):
                     'payment_method': mapping_form.cleaned_data.get('payment_method'),
                     'amount': mapping_form.cleaned_data['amount'],
                     'date': mapping_form.cleaned_data['date'],
-                    'transaction_type': mapping_form.cleaned_data.get('transaction_type'),
+                    'income_type': mapping_form.cleaned_data.get('transaction_type'),
                     'city': mapping_form.cleaned_data.get('city'),
                     'collector_name': mapping_form.cleaned_data.get('collector_name'),
                     'transaction_number': mapping_form.cleaned_data.get('transaction_number'),
@@ -438,21 +445,51 @@ def excel_import(request):
                     return redirect('transactions:excel_import')
 
                 try:
-                    imported, errors = import_excel_data(temp_path, mapping, branch, request.user)
-                    if imported > 0:
-                        messages.success(request, f'تم استيراد {imported} حركة مالية بنجاح!')
-                    if errors:
-                        for err in errors:
-                            messages.warning(request, err)
+                    raw_rows = parse_rows_for_preview(temp_path, mapping, INCOME_FIELDS)
                 except Exception as e:
-                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                    messages.error(request, f'خطأ أثناء قراءة الملف: {e}')
+                    return redirect('transactions:excel_import')
                 finally:
                     try:
                         os.remove(temp_path)
-                    except:
+                    except OSError:
                         pass
 
-                return redirect('transactions:income_list')
+                if len(raw_rows) > 10000:
+                    messages.error(request, 'الملف يحتوي على أكثر من 10,000 صف، يرجى تقسيمه لملفات أصغر.')
+                    return redirect('transactions:excel_import')
+                if not raw_rows:
+                    messages.warning(request, 'الملف لا يحتوي على أي صفوف بيانات.')
+                    return redirect('transactions:excel_import')
+
+                course_required = mapping.get('course') is not None
+                results = run_income_validation(raw_rows, branch, course_required=course_required)
+
+                cleanup_stale_staged_imports()
+                token = save_staged_import('income', branch.id, request.user.id, results, course_required=course_required)
+
+                from courses.models import Course
+                from accounts.models import User
+                course_names = list(Course.objects.filter(is_active=True).order_by('name').values_list('name', flat=True))
+                collector_names = sorted({
+                    f"{u['first_name'] or ''} {u['last_name'] or ''}".strip()
+                    for u in User.objects.filter(
+                        is_active=True, user_type__in=['employee', 'branch_manager', 'accountant']
+                    ).values('first_name', 'last_name')
+                } - {''})
+
+                return render(request, 'transactions/excel_import.html', {
+                    'title': 'استيراد من Excel - مراجعة واعتماد',
+                    'step': 'preview',
+                    'staged_token': token,
+                    'staged_rows': results,
+                    'course_names': course_names,
+                    'collector_names': collector_names,
+                    'branch': branch,
+                })
+            else:
+                messages.error(request, 'خطأ في بيانات ربط الأعمدة، يرجى المحاولة مرة أخرى.')
+                return redirect('transactions:excel_import')
     else:
         form = ExcelImportForm(user=request.user)
 
@@ -461,6 +498,68 @@ def excel_import(request):
         'title': 'استيراد من Excel',
         'step': 'upload',
     })
+
+
+def _income_staged_ok(staged, user):
+    return staged and staged.get('owner_user_id') == user.id and staged.get('kind') == 'income'
+
+
+@login_required
+def excel_import_revalidate(request):
+    """AJAX: يعيد تشغيل التحقق الكامل على البيانات المعدّلة في المتصفح، بدون
+    أي كتابة على قاعدة البيانات."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'invalid method'}, status=405)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'invalid payload'}, status=400)
+
+    token = payload.get('token')
+    staged = load_staged_import(token)
+    if not _income_staged_ok(staged, request.user):
+        return JsonResponse({'error': 'جلسة الاستيراد غير موجودة أو منتهية'}, status=404)
+
+    branch = get_object_or_404(Branch, id=staged['branch_id'])
+    edited_rows = payload.get('rows') or []
+    rows_data = [r.get('data', {}) for r in edited_rows] if edited_rows else [r['data'] for r in staged['rows']]
+
+    results = run_income_validation(rows_data, branch, course_required=staged.get('course_required', True))
+    update_staged_rows(token, results)
+
+    return JsonResponse({'rows': results, 'all_valid': all(r['is_valid'] for r in results)})
+
+
+@login_required
+def excel_import_commit(request):
+    """AJAX: بيعتمد البيانات المرحّلة فقط، بعد إعادة تحقق أخيرة على السيرفر.
+    مفيش أي صفوف بيانات جاية من العميل هنا عمداً - المصدر الوحيد للحقيقة هو
+    آخر نسخة اتحققت عليها إعادة التحقق."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'invalid method'}, status=405)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'invalid payload'}, status=400)
+
+    token = payload.get('token')
+    staged = load_staged_import(token)
+    if not _income_staged_ok(staged, request.user):
+        return JsonResponse({'success': False, 'errors': ['جلسة الاستيراد غير موجودة أو منتهية']}, status=404)
+
+    branch = get_object_or_404(Branch, id=staged['branch_id'])
+    rows_data = [r['data'] for r in staged['rows']]
+    results = run_income_validation(rows_data, branch, course_required=staged.get('course_required', True))
+
+    if not all(r['is_valid'] for r in results):
+        previously_valid = all(r['is_valid'] for r in staged['rows'])
+        reason = 'stale_reference_data' if previously_valid else 'validation_errors'
+        update_staged_rows(token, results)
+        return JsonResponse({'success': False, 'rows': results, 'reason': reason}, status=400)
+
+    imported = create_income_records(results, branch, request.user)
+    delete_staged_import(token)
+    return JsonResponse({'success': True, 'imported': imported})
 
 
 @login_required
@@ -571,7 +670,7 @@ def excel_import_expense(request):
                 mapping_form = ExcelExpenseMappingForm(initial={
                     'temp_file': temp_path,
                     'branch': branch.id,
-                    'step': 'import',
+                    'step': 'preview',
                     **initial_mapping
                 })
 
@@ -585,7 +684,7 @@ def excel_import_expense(request):
                     'step': 'mapping',
                 })
 
-        elif step == 'import':
+        elif step == 'preview':
             mapping_form = ExcelExpenseMappingForm(request.POST)
             if mapping_form.is_valid():
                 temp_path = mapping_form.cleaned_data['temp_file']
@@ -604,21 +703,38 @@ def excel_import_expense(request):
                     return redirect('transactions:excel_import_expense')
 
                 try:
-                    imported, errors = import_excel_expense_data(temp_path, mapping, branch, request.user)
-                    if imported > 0:
-                        messages.success(request, f'تم استيراد {imported} مصروف بنجاح!')
-                    if errors:
-                        for err in errors:
-                            messages.warning(request, err)
+                    raw_rows = parse_rows_for_preview(temp_path, mapping, EXPENSE_FIELDS)
                 except Exception as e:
-                    messages.error(request, f'خطأ أثناء الاستيراد: {str(e)}')
+                    messages.error(request, f'خطأ أثناء قراءة الملف: {e}')
+                    return redirect('transactions:excel_import_expense')
                 finally:
                     try:
                         os.remove(temp_path)
-                    except:
+                    except OSError:
                         pass
 
-                return redirect('transactions:expense_list')
+                if len(raw_rows) > 10000:
+                    messages.error(request, 'الملف يحتوي على أكثر من 10,000 صف، يرجى تقسيمه لملفات أصغر.')
+                    return redirect('transactions:excel_import_expense')
+                if not raw_rows:
+                    messages.warning(request, 'الملف لا يحتوي على أي صفوف بيانات.')
+                    return redirect('transactions:excel_import_expense')
+
+                results = run_expense_validation(raw_rows)
+
+                cleanup_stale_staged_imports()
+                token = save_staged_import('expense', branch.id, request.user.id, results)
+
+                return render(request, 'transactions/excel_import_expense.html', {
+                    'title': 'استيراد مصروفات من Excel - مراجعة واعتماد',
+                    'step': 'preview',
+                    'staged_token': token,
+                    'staged_rows': results,
+                    'branch': branch,
+                })
+            else:
+                messages.error(request, 'خطأ في بيانات ربط الأعمدة، يرجى المحاولة مرة أخرى.')
+                return redirect('transactions:excel_import_expense')
     else:
         form = ExcelExpenseImportForm(user=request.user)
 
@@ -627,3 +743,63 @@ def excel_import_expense(request):
         'title': 'استيراد مصروفات من Excel',
         'step': 'upload',
     })
+
+
+def _expense_staged_ok(staged, user):
+    return staged and staged.get('owner_user_id') == user.id and staged.get('kind') == 'expense'
+
+
+@login_required
+def excel_import_expense_revalidate(request):
+    """AJAX: يعيد تشغيل التحقق الكامل على بيانات المصروفات المعدّلة في
+    المتصفح، بدون أي كتابة على قاعدة البيانات."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'invalid method'}, status=405)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'invalid payload'}, status=400)
+
+    token = payload.get('token')
+    staged = load_staged_import(token)
+    if not _expense_staged_ok(staged, request.user):
+        return JsonResponse({'error': 'جلسة الاستيراد غير موجودة أو منتهية'}, status=404)
+
+    edited_rows = payload.get('rows') or []
+    rows_data = [r.get('data', {}) for r in edited_rows] if edited_rows else [r['data'] for r in staged['rows']]
+
+    results = run_expense_validation(rows_data)
+    update_staged_rows(token, results)
+
+    return JsonResponse({'rows': results, 'all_valid': all(r['is_valid'] for r in results)})
+
+
+@login_required
+def excel_import_expense_commit(request):
+    """AJAX: بيعتمد بيانات المصروفات المرحّلة فقط، بعد إعادة تحقق أخيرة على
+    السيرفر."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'invalid method'}, status=405)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'invalid payload'}, status=400)
+
+    token = payload.get('token')
+    staged = load_staged_import(token)
+    if not _expense_staged_ok(staged, request.user):
+        return JsonResponse({'success': False, 'errors': ['جلسة الاستيراد غير موجودة أو منتهية']}, status=404)
+
+    branch = get_object_or_404(Branch, id=staged['branch_id'])
+    rows_data = [r['data'] for r in staged['rows']]
+    results = run_expense_validation(rows_data)
+
+    if not all(r['is_valid'] for r in results):
+        previously_valid = all(r['is_valid'] for r in staged['rows'])
+        reason = 'stale_reference_data' if previously_valid else 'validation_errors'
+        update_staged_rows(token, results)
+        return JsonResponse({'success': False, 'rows': results, 'reason': reason}, status=400)
+
+    imported = create_expense_records(results, branch, request.user)
+    delete_staged_import(token)
+    return JsonResponse({'success': True, 'imported': imported})

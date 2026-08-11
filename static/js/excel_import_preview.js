@@ -1,0 +1,209 @@
+/* معاينة استيراد Excel: تحقق حي وتعديل داخل الجدول قبل الاعتماد النهائي.
+ * stagedRows هو مصدر الحقيقة الوحيد؛ الصفحات بترندر بس صف الصفحة الحالية
+ * كعناصر DOM حية (مش كل الصفوف مرة واحدة) عشان الملفات الكبيرة تفضل سريعة. */
+(function () {
+    function csrfToken() {
+        var el = document.querySelector('[name=csrfmiddlewaretoken]');
+        return el ? el.value : '';
+    }
+
+    function el(id) {
+        return document.getElementById(id);
+    }
+
+    window.initExcelPreview = function (options) {
+        var stagedRows = JSON.parse(document.getElementById('stagedRowsData').textContent);
+        var fields = options.fields;
+        var pageSize = 50;
+        var currentPage = 0;
+
+        var tbody = el('previewTableBody');
+        var paginationEl = el('previewPagination');
+        var summaryEl = el('previewSummaryText');
+        var revalidateBtn = el('revalidateBtn');
+        var commitBtn = el('commitBtn');
+
+        function cellControl(row, field) {
+            var wrap = document.createElement('div');
+            var value = row.data[field.name] || '';
+            var error = row.errors && row.errors[field.name];
+
+            var input;
+            if (field.type === 'select') {
+                input = document.createElement('select');
+                input.className = 'form-select form-select-sm';
+                field.options.forEach(function (opt) {
+                    var o = document.createElement('option');
+                    o.value = opt[0];
+                    o.textContent = opt[1];
+                    if (opt[0] === value) o.selected = true;
+                    input.appendChild(o);
+                });
+            } else {
+                input = document.createElement('input');
+                input.className = 'form-control form-control-sm';
+                input.type = field.type === 'number' ? 'number' : (field.type === 'date' ? 'date' : 'text');
+                if (field.type === 'number') input.step = '0.01';
+                input.value = value;
+                if (field.datalist) input.setAttribute('list', field.datalist);
+            }
+
+            if (error) input.classList.add('is-invalid');
+
+            var writeThrough = function () {
+                row.data[field.name] = input.value;
+            };
+            input.addEventListener('input', writeThrough);
+            input.addEventListener('change', writeThrough);
+
+            wrap.appendChild(input);
+
+            if (error) {
+                var msg = document.createElement('div');
+                msg.className = 'invalid-feedback d-block small';
+                msg.textContent = error;
+                wrap.appendChild(msg);
+            } else if (field.matchField && row[field.matchField] && row[field.matchField].quality && row[field.matchField].quality !== 'exact') {
+                var match = row[field.matchField];
+                var hint = document.createElement('div');
+                hint.className = 'small mt-1 ' + (match.quality === 'low_confidence' ? 'text-warning' : 'text-info');
+                hint.innerHTML = '<i class="fas fa-triangle-exclamation"></i> تم اختيار: ' + (match.resolved_name || '');
+                wrap.appendChild(hint);
+            }
+
+            return wrap;
+        }
+
+        function renderPage() {
+            tbody.innerHTML = '';
+            var start = currentPage * pageSize;
+            var pageRows = stagedRows.slice(start, start + pageSize);
+
+            pageRows.forEach(function (row) {
+                var tr = document.createElement('tr');
+                if (!row.is_valid) tr.classList.add('table-danger');
+
+                var numTd = document.createElement('td');
+                numTd.textContent = row.row_number;
+                tr.appendChild(numTd);
+
+                fields.forEach(function (field) {
+                    var td = document.createElement('td');
+                    td.appendChild(cellControl(row, field));
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            paginationEl.innerHTML = '';
+            var pageCount = Math.ceil(stagedRows.length / pageSize) || 1;
+            if (pageCount <= 1) return;
+
+            for (var p = 0; p < pageCount; p++) {
+                (function (p) {
+                    var btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-sm ' + (p === currentPage ? 'btn-primary' : 'btn-outline-secondary');
+                    btn.textContent = p + 1;
+                    btn.addEventListener('click', function () {
+                        currentPage = p;
+                        renderPage();
+                    });
+                    paginationEl.appendChild(btn);
+                })(p);
+            }
+        }
+
+        function renderSummary() {
+            var invalidCount = stagedRows.filter(function (r) { return !r.is_valid; }).length;
+            if (invalidCount === 0) {
+                summaryEl.innerHTML = '<span class="text-success"><i class="fas fa-circle-check"></i> جميع بيانات الملف صحيحة وجاهزة للاعتماد (' + stagedRows.length + ' صف)</span>';
+                commitBtn.disabled = false;
+            } else {
+                summaryEl.innerHTML = '<span class="text-danger"><i class="fas fa-circle-exclamation"></i> يوجد ' + invalidCount + ' صف به أخطاء من أصل ' + stagedRows.length + ' — صحح الأخطاء ثم اضغط "إعادة التحقق"</span>';
+                commitBtn.disabled = true;
+            }
+        }
+
+        function revalidate() {
+            revalidateBtn.disabled = true;
+            var original = revalidateBtn.innerHTML;
+            revalidateBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جارٍ التحقق...';
+
+            fetch(options.revalidateUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify({
+                    token: options.token,
+                    rows: stagedRows.map(function (r) { return { data: r.data }; }),
+                }),
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (resp.rows) {
+                        stagedRows = resp.rows;
+                        var maxPage = Math.max(0, Math.ceil(stagedRows.length / pageSize) - 1);
+                        currentPage = Math.min(currentPage, maxPage);
+                        renderPage();
+                        renderSummary();
+                    } else if (window.showError) {
+                        window.showError('تعذر إعادة التحقق، حاول مرة أخرى.');
+                    }
+                })
+                .catch(function () {
+                    if (window.showError) window.showError('تعذر الاتصال بالخادم لإعادة التحقق.');
+                })
+                .finally(function () {
+                    revalidateBtn.disabled = false;
+                    revalidateBtn.innerHTML = original;
+                });
+        }
+
+        function commit() {
+            commitBtn.disabled = true;
+            var original = commitBtn.innerHTML;
+            commitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جارٍ الاعتماد...';
+
+            fetch(options.commitUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                body: JSON.stringify({ token: options.token }),
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (resp) {
+                    if (resp.success) {
+                        if (window.showSuccess) window.showSuccess('تم اعتماد ورفع ' + resp.imported + ' سجل بنجاح.');
+                        window.location.href = options.redirectUrl;
+                        return;
+                    }
+                    if (resp.rows) {
+                        stagedRows = resp.rows;
+                        renderPage();
+                        renderSummary();
+                    }
+                    var msg = resp.reason === 'stale_reference_data'
+                        ? 'بيانات مرجعية تغيرت أثناء المراجعة (مثل دورة أو موظف)، تم إعادة التحقق تلقائياً — راجع الأخطاء الجديدة.'
+                        : 'لا يزال هناك أخطاء في الملف، يرجى مراجعة البيانات وتصحيح الأخطاء الموضحة.';
+                    if (window.showError) window.showError(msg);
+                })
+                .catch(function () {
+                    if (window.showError) window.showError('تعذر الاتصال بالخادم للاعتماد.');
+                })
+                .finally(function () {
+                    commitBtn.innerHTML = original;
+                    commitBtn.disabled = stagedRows.some(function (r) { return !r.is_valid; });
+                });
+        }
+
+        revalidateBtn.addEventListener('click', revalidate);
+        commitBtn.addEventListener('click', commit);
+
+        renderPage();
+        renderSummary();
+    };
+})();

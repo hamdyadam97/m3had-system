@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}{{ title }} - نظام إدارة المعاهد{% endblock %}
 
@@ -291,6 +292,87 @@
     amountInput.addEventListener('input', recalcExcelTotal);
     recalcExcelTotal();
 })();
+</script>
+{% endif %}
+
+{% if step == 'preview' %}
+{% csrf_token %}
+<div class="card mb-3">
+    <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span id="previewSummaryText" class="fw-bold"></span>
+        <div class="d-flex gap-2">
+            <button type="button" id="revalidateBtn" class="btn btn-outline-primary">
+                <i class="fas fa-rotate"></i> إعادة التحقق من البيانات
+            </button>
+            <button type="button" id="commitBtn" class="btn btn-success" disabled>
+                <i class="fas fa-check-circle"></i> اعتماد ورفع البيانات
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered mb-0" id="previewTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>الاسم / الجهة</th>
+                        <th>رقم الهوية</th>
+                        <th>المبلغ</th>
+                        <th>التاريخ</th>
+                        <th>نوع العملية</th>
+                        <th>طريقة الدفع</th>
+                        <th>المدينة</th>
+                        <th>المحصل</th>
+                        <th>رقم العملية</th>
+                        <th>الدورة</th>
+                        <th>ملاحظات</th>
+                    </tr>
+                </thead>
+                <tbody id="previewTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center">
+        <div id="previewPagination" class="d-flex gap-1"></div>
+        <small class="text-muted">50 صف لكل صفحة</small>
+    </div>
+</div>
+
+<datalist id="collectorsDatalist">
+    {% for name in collector_names %}<option value="{{ name }}">{% endfor %}
+</datalist>
+<datalist id="coursesDatalist">
+    {% for name in course_names %}<option value="{{ name }}">{% endfor %}
+</datalist>
+
+{{ staged_rows|json_script:"stagedRowsData" }}
+
+<script src="{% static 'js/excel_import_preview.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    initExcelPreview({
+        token: '{{ staged_token }}',
+        revalidateUrl: '{% url "transactions:excel_import_revalidate" %}',
+        commitUrl: '{% url "transactions:excel_import_commit" %}',
+        redirectUrl: '{% url "transactions:income_list" %}',
+        fields: [
+            {name: 'party_name', type: 'text'},
+            {name: 'id_number', type: 'text'},
+            {name: 'amount', type: 'number'},
+            {name: 'date', type: 'date'},
+            {name: 'income_type', type: 'select', options: [['registration', 'تسجيل'], ['installment', 'تحصيل']]},
+            {name: 'payment_method', type: 'select', options: [['mada', 'مدى'], ['visa', 'فيزا'], ['mastercard', 'ماستر'], ['bank_transfer', 'تحويل بنكي'], ['cash', 'كاش']]},
+            {name: 'city', type: 'text'},
+            {name: 'collector_name', type: 'text', datalist: 'collectorsDatalist'},
+            {name: 'transaction_number', type: 'text'},
+            {name: 'course', type: 'text', datalist: 'coursesDatalist', matchField: 'course_match'},
+            {name: 'notes', type: 'text'},
+        ],
+    });
+});
 </script>
 {% endif %}
 
