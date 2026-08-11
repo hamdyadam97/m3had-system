@@ -349,6 +349,41 @@
     {% for name in course_names %}<option value="{{ name }}">{% endfor %}
 </datalist>
 
+<!-- مودال إضافة دورة سريعة -->
+<div class="modal fade" id="quickAddCourseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus-circle text-success"></i> إضافة دورة جديدة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="quickAddCourseError" class="alert alert-danger d-none"></div>
+                <div class="mb-3">
+                    <label class="form-label">اسم الدورة / الدبلومة *</label>
+                    <input type="text" id="quickAddCourseName" class="form-control" placeholder="مثال: دبلومة إدارة الموارد البشرية">
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">السعر</label>
+                        <input type="number" id="quickAddCoursePrice" class="form-control" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">المدة (بالأيام)</label>
+                        <input type="number" id="quickAddCourseDuration" class="form-control" min="1" placeholder="30">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" id="quickAddCourseSaveBtn" class="btn btn-success">
+                    <i class="fas fa-check"></i> حفظ وربط
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {{ staged_rows|json_script:"stagedRowsData" }}
 {{ collector_names|json_script:"collectorNamesData" }}
 {{ course_names|json_script:"courseNamesData" }}
@@ -373,7 +408,7 @@ document.addEventListener('DOMContentLoaded', function () {
             {name: 'city', type: 'text'},
             {name: 'collector_name', type: 'text', datalist: 'collectorsDatalist', pickList: true, pickListOptions: collectorNames},
             {name: 'transaction_number', type: 'text'},
-            {name: 'course', type: 'text', datalist: 'coursesDatalist', matchField: 'course_match', pickList: true, pickListOptions: courseNames},
+            {name: 'course', type: 'text', datalist: 'coursesDatalist', matchField: 'course_match', pickList: true, pickListOptions: courseNames, quickAddUrl: '{% url "courses:course_quick_add" %}'},
             {name: 'notes', type: 'text'},
         ],
     });

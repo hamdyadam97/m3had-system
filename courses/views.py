@@ -1,5 +1,9 @@
+import json
+import uuid
+from decimal import Decimal, InvalidOperation
 from django.contrib.auth.decorators import login_required, permission_required
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
@@ -83,6 +87,49 @@ def course_create(request):
         'course': course,  # 🔴 هنا course = None لو GET، أو = course لو POST success (بس هنا بيرجع redirect)
         'title': 'إضافة دورة جديدة'
     })
+
+
+@login_required
+def course_quick_add(request):
+    """إضافة دورة سريعة (مثلاً وانت بتراجع استيراد Excel ولقيت دورة ناقصة).
+    متاحة لأي مستخدم مسجل دخول عمداً - مش مقصورة على صلاحية
+    courses.add_course - عشان أي موظف يقدر يضيف دورة حقيقية ناقصة بدل ما
+    يضطر يستنى أدمن أو يقبل مطابقة تقريبية غلط."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'invalid method'}, status=405)
+    try:
+        payload = json.loads(request.body)
+    except (json.JSONDecodeError, TypeError):
+        return JsonResponse({'error': 'بيانات غير صالحة'}, status=400)
+
+    name = (payload.get('name') or '').strip()
+    if len(name) < 3:
+        return JsonResponse({'error': 'اسم الدورة قصير جداً (3 أحرف على الأقل)'}, status=400)
+    if Course.objects.filter(name__iexact=name).exists():
+        return JsonResponse({'error': f'يوجد دورة بنفس الاسم بالفعل: "{name}"'}, status=400)
+
+    try:
+        price = Decimal(str(payload.get('price') or 0))
+        if price < 0:
+            raise InvalidOperation
+    except (InvalidOperation, ValueError, TypeError):
+        return JsonResponse({'error': 'السعر غير صالح'}, status=400)
+
+    try:
+        duration_days = int(payload.get('duration_days') or 30)
+        if duration_days < 1:
+            raise ValueError
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'المدة غير صالحة'}, status=400)
+
+    course_type = 'diploma' if any(w in name for w in ['دبلوم', 'دبلومة']) else 'course'
+    code = f"Q-{uuid.uuid4().hex[:8].upper()}"
+
+    course = Course.objects.create(
+        name=name, code=code, course_type=course_type,
+        price=price, duration_days=duration_days, is_active=True,
+    )
+    return JsonResponse({'id': course.id, 'name': course.name})
 
 
 @login_required

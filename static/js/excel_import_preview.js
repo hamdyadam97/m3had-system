@@ -96,7 +96,77 @@
                 wrap.appendChild(picker);
             }
 
+            // زر إضافة دورة جديدة مباشرة لو الدورة المطلوبة مش موجودة أصلاً
+            // في النظام، بدل ما نضطر نقبل أقرب مطابقة تقريبية غلط
+            if (field.quickAddUrl) {
+                var addBtn = document.createElement('button');
+                addBtn.type = 'button';
+                addBtn.className = 'btn btn-sm btn-outline-success mt-1 w-100';
+                addBtn.innerHTML = '<i class="fas fa-plus"></i> إضافة دورة جديدة';
+                addBtn.addEventListener('click', function () {
+                    openQuickAddCourseModal(field.quickAddUrl, function (newName) {
+                        input.value = newName;
+                        row.data[field.name] = newName;
+                        if (field.pickListOptions && field.pickListOptions.indexOf(newName) === -1) {
+                            field.pickListOptions.push(newName);
+                        }
+                        renderPage();
+                    });
+                });
+                wrap.appendChild(addBtn);
+            }
+
             return wrap;
+        }
+
+        function openQuickAddCourseModal(url, onSuccess) {
+            var modalEl = el('quickAddCourseModal');
+            if (!modalEl) return;
+            var modal = new bootstrap.Modal(modalEl);
+            var nameInput = el('quickAddCourseName');
+            var priceInput = el('quickAddCoursePrice');
+            var durationInput = el('quickAddCourseDuration');
+            var errorEl = el('quickAddCourseError');
+            var saveBtn = el('quickAddCourseSaveBtn');
+
+            nameInput.value = '';
+            priceInput.value = '';
+            durationInput.value = '';
+            errorEl.classList.add('d-none');
+
+            saveBtn.onclick = function () {
+                errorEl.classList.add('d-none');
+                saveBtn.disabled = true;
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken() },
+                    body: JSON.stringify({
+                        name: nameInput.value,
+                        price: priceInput.value,
+                        duration_days: durationInput.value,
+                    }),
+                })
+                    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+                    .then(function (result) {
+                        if (!result.ok) {
+                            errorEl.textContent = result.data.error || 'حدث خطأ غير متوقع';
+                            errorEl.classList.remove('d-none');
+                            return;
+                        }
+                        modal.hide();
+                        onSuccess(result.data.name);
+                        if (window.showSuccess) window.showSuccess('تمت إضافة الدورة بنجاح.');
+                    })
+                    .catch(function () {
+                        errorEl.textContent = 'تعذر الاتصال بالخادم.';
+                        errorEl.classList.remove('d-none');
+                    })
+                    .finally(function () {
+                        saveBtn.disabled = false;
+                    });
+            };
+
+            modal.show();
         }
 
         function removeRow(row) {
