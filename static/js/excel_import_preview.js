@@ -71,6 +71,31 @@
                 wrap.appendChild(hint);
             }
 
+            // قائمة اختيار مساعدة: بتفضل تعرض أقرب تخمين تلقائي في الخانة،
+            // بس لو المستخدم حاسس إنه غلط يقدر يختار من القائمة الكاملة مباشرة
+            if (field.pickList && field.pickListOptions && field.pickListOptions.length) {
+                var picker = document.createElement('select');
+                picker.className = 'form-select form-select-sm mt-1';
+                var placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = '-- اختر من القائمة --';
+                picker.appendChild(placeholder);
+                field.pickListOptions.forEach(function (name) {
+                    var o = document.createElement('option');
+                    o.value = name;
+                    o.textContent = name;
+                    picker.appendChild(o);
+                });
+                picker.addEventListener('change', function () {
+                    if (picker.value) {
+                        input.value = picker.value;
+                        row.data[field.name] = picker.value;
+                        picker.value = '';
+                    }
+                });
+                wrap.appendChild(picker);
+            }
+
             return wrap;
         }
 
