@@ -389,7 +389,8 @@ def excel_import(request):
                         'title': 'استيراد من Excel',
                     })
 
-                # تقدير افتراضي للـ mapping (حسب ملف Excel المعتمد)
+                # تقدير افتراضي للـ mapping (حسب ملف Excel المعتمد - 11 عمود من 0 لحد 10،
+                # مفيش عمود رقم عملية ولا ملاحظات في الشكل الافتراضي فبنسيبهم فاضيين)
                 initial_mapping = {
                     'party_name': 0,
                     'id_number': 1,
@@ -397,11 +398,9 @@ def excel_import(request):
                     'amount': 3,
                     'date': 4,
                     'transaction_type': 6,
+                    'course': 8,
                     'city': 9,
                     'collector_name': 10,
-                    'transaction_number': 11,
-                    'course': 8,
-                    'notes': 12,
                 }
 
                 mapping_form = ExcelMappingForm(initial={
