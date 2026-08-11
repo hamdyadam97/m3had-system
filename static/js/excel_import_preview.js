@@ -50,8 +50,21 @@
 
             if (error) input.classList.add('is-invalid');
 
+            // تلميح "تم اختيار: ..." بيعكس نتيجة آخر تحقق من السيرفر بس، فلازم
+            // نمسحه فوراً لحظة ما المستخدم يغيّر القيمة يدوياً (كتابة/قائمة/
+            // إضافة دورة) وإلا هيفضل يعرض معلومة قديمة ملهاش علاقة بالقيمة الحالية
+            var hintEl = null;
+            function clearStaleHint() {
+                if (field.matchField) row[field.matchField] = null;
+                if (hintEl) {
+                    hintEl.remove();
+                    hintEl = null;
+                }
+            }
+
             var writeThrough = function () {
                 row.data[field.name] = input.value;
+                clearStaleHint();
             };
             input.addEventListener('input', writeThrough);
             input.addEventListener('change', writeThrough);
@@ -65,10 +78,10 @@
                 wrap.appendChild(msg);
             } else if (field.matchField && row[field.matchField] && row[field.matchField].quality && row[field.matchField].quality !== 'exact') {
                 var match = row[field.matchField];
-                var hint = document.createElement('div');
-                hint.className = 'small mt-1 ' + (match.quality === 'low_confidence' ? 'text-warning' : 'text-info');
-                hint.innerHTML = '<i class="fas fa-triangle-exclamation"></i> تم اختيار: ' + (match.resolved_name || '');
-                wrap.appendChild(hint);
+                hintEl = document.createElement('div');
+                hintEl.className = 'small mt-1 ' + (match.quality === 'low_confidence' ? 'text-warning' : 'text-info');
+                hintEl.innerHTML = '<i class="fas fa-triangle-exclamation"></i> تم اختيار: ' + (match.resolved_name || '');
+                wrap.appendChild(hintEl);
             }
 
             // قائمة اختيار مساعدة: بتفضل تعرض أقرب تخمين تلقائي في الخانة،
@@ -90,6 +103,7 @@
                     if (picker.value) {
                         input.value = picker.value;
                         row.data[field.name] = picker.value;
+                        clearStaleHint();
                         picker.value = '';
                     }
                 });
@@ -110,6 +124,7 @@
                         if (field.pickListOptions && field.pickListOptions.indexOf(newName) === -1) {
                             field.pickListOptions.push(newName);
                         }
+                        clearStaleHint();
                         renderPage();
                     });
                 });
