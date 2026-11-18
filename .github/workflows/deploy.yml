@@ -31,13 +31,35 @@ jobs:
             VENV=/opt/m3had-system
             SERVICE=m3had-system
 
+            BACKUP_DIR=/opt/m3had-system/db-backups
+
             cd "$APP_DIR"
 
-            # سحب الكود بتوكن مؤقت خاص بالـ run ده (بيتلغي لوحده بعد ما الـ job يخلص)
-            # عشان السيرفر ميحتاجش يكون عليه باسورد أو توكن GitHub متخزن.
-            # --ff-only: لو في تعديلات يدوية على السيرفر النشر يقف بدل ما يمسحها
+            # 1) نسخة احتياطية من قاعدة البيانات الحية قبل أي حاجة، خارج مجلد المشروع.
+            #    db.sqlite3 كانت متتبعة في git زمان، فالـ reset ممكن يمسحها لو السيرفر
+            #    لسه شايفها متتبعة. backup API بتاع sqlite آمن حتى والموقع شغال.
+            mkdir -p "$BACKUP_DIR"
+            DB_BACKUP=""
+            if [ -f db.sqlite3 ]; then
+              DB_BACKUP="$BACKUP_DIR/db_$(date +%Y%m%d_%H%M%S).sqlite3"
+              "$VENV/bin/python" -c "import sqlite3,sys; s=sqlite3.connect('db.sqlite3'); d=sqlite3.connect(sys.argv[1]); s.backup(d); d.close(); s.close()" "$DB_BACKUP"
+              chown --reference=db.sqlite3 "$DB_BACKUP"
+              chmod --reference=db.sqlite3 "$DB_BACKUP"
+              # الاحتفاظ بآخر 30 نسخة بس
+              ls -1t "$BACKUP_DIR"/db_*.sqlite3 | tail -n +31 | xargs -r rm -f
+            fi
+
+            # 2) السيرفر يبقى نسخة طبق الأصل من GitHub: أي تعديلات محلية على الكود
+            #    بتتلغي. الملفات اللي مش في git (قاعدة البيانات، media، .env) مش بتتلمس.
+            #    التوكن مؤقت خاص بالـ run ده، فالسيرفر مش محتاج باسورد GitHub.
             git fetch "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git" main
-            git merge --ff-only FETCH_HEAD
+            git reset --hard FETCH_HEAD
+
+            # 3) لو الـ reset مسح قاعدة البيانات نرجّعها من النسخة اللي لسه واخدينها
+            if [ -n "$DB_BACKUP" ] && [ ! -f db.sqlite3 ]; then
+              cp -p "$DB_BACKUP" db.sqlite3
+              echo "db.sqlite3 restored from $DB_BACKUP"
+            fi
 
             "$VENV/bin/pip" install -q -r requirements.txt
             "$VENV/bin/python" manage.py migrate --noinput
