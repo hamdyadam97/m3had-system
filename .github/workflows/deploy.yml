@@ -4,51 +4,51 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Deploy to VPS
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           password: ${{ secrets.SSH_PASSWORD }}
+          envs: GH_TOKEN,GH_REPO
           script: |
-                    cd /var/www/m3had-system
+            set -e
 
-                    # نسخ احتياطي لقاعدة البيانات الحية قبل أي عملية reset
-                    # (لازم لأن db.sqlite3 اتشالت من git ومن الممكن الـ reset --hard يمسحها لو لقاها متتبعة قديمًا)
-                    if [ -f db.sqlite3 ]; then
-                        cp db.sqlite3 db.sqlite3.bak
-                    fi
+            # المسار الفعلي اللي الموقع شغال منه على السيرفر، والـ venv في المجلد الأب
+            APP_DIR=/opt/m3had-system/m3had-system/m3had-system
+            VENV=/opt/m3had-system
+            SERVICE=m3had-system
 
-                    git fetch origin main
-                    git reset --hard origin/main
+            cd "$APP_DIR"
 
-                    # استعادة قاعدة البيانات الحية لو الـ reset مسحها (أول مرة بعد إلغاء تتبعها في git)
-                    if [ ! -f db.sqlite3 ] && [ -f db.sqlite3.bak ]; then
-                        cp db.sqlite3.bak db.sqlite3
-                    fi
+            # سحب الكود بتوكن مؤقت خاص بالـ run ده (بيتلغي لوحده بعد ما الـ job يخلص)
+            # عشان السيرفر ميحتاجش يكون عليه باسورد أو توكن GitHub متخزن.
+            # --ff-only: لو في تعديلات يدوية على السيرفر النشر يقف بدل ما يمسحها
+            git fetch "https://x-access-token:${GH_TOKEN}@github.com/${GH_REPO}.git" main
+            git merge --ff-only FETCH_HEAD
 
-                    source venv/bin/activate
-                    pip install -r requirements.txt
-                    python manage.py migrate --noinput
-        
-                    # تحديث الملفات الثابتة
-                    python manage.py collectstatic --noinput
-        
-                    # الضربة القاضية: ضبط الصلاحيات للملف ليعمل اللوجن
-                    sudo chown www-data:www-data /var/www/m3had-system/db.sqlite3
-                    sudo chmod 664 /var/www/m3had-system/db.sqlite3
-                    
-                    
-                    # إعادة التشغيل الإجبارية للـ Gunicorn ليرى البيانات الجديدة
-                    sudo systemctl restart gunicorn
-            
-                    # إعادة تشغيل الـ Celery لضمان تنفيذ المهام بالكود الجديد
-                    sudo systemctl restart celery
+            "$VENV/bin/pip" install -q -r requirements.txt
+            "$VENV/bin/python" manage.py migrate --noinput
+            "$VENV/bin/python" manage.py collectstatic --noinput
+
+            sudo systemctl restart "$SERVICE"
+
+            # Celery اختياري: بيتعمله restart بس لو الخدمة موجودة على السيرفر
+            if systemctl list-unit-files | grep -q '^celery\.service'; then
+              sudo systemctl restart celery
+            fi
+
+            systemctl is-active --quiet "$SERVICE"
+            git log --oneline -1
