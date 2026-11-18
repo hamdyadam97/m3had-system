@@ -1,0 +1,23 @@
+{% load i18n %}
+<details data-filter-title="{{ title }}" open>
+  <summary>{% blocktranslate with filter_title=title %} By {{ filter_title }} {% endblocktranslate %}</summary>
+  {% for choice in choices %}
+  <form method="get" style="padding: 4px 15px 10px;">
+    {% for key, value in choice.hidden %}
+      <input type="hidden" name="{{ key }}" value="{{ value }}">
+    {% endfor %}
+    <div style="margin-bottom: 6px;">
+      <label style="display:block;">من</label>
+      <input type="date" name="{{ choice.param_gte }}" value="{{ choice.value_gte }}" style="width: 100%;">
+    </div>
+    <div style="margin-bottom: 6px;">
+      <label style="display:block;">إلى</label>
+      <input type="date" name="{{ choice.param_lte }}" value="{{ choice.value_lte }}" style="width: 100%;">
+    </div>
+    <input type="submit" value="تطبيق" class="button">
+    {% if choice.selected %}
+      <a href="{{ choice.reset_url }}" style="margin-inline-start: 8px;">مسح</a>
+    {% endif %}
+  </form>
+  {% endfor %}
+</details>
