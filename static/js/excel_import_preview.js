@@ -205,6 +205,15 @@
 
                 var numTd = document.createElement('td');
                 numTd.textContent = row.row_number;
+                // خطأ على مستوى الصف كله (زي إن الصف مسجل قبل كده في النظام)
+                // مش مربوط بخانة معينة فبيتعرض جنب رقم الصف
+                if (row.errors && row.errors._row) {
+                    var rowErr = document.createElement('div');
+                    rowErr.className = 'text-danger small fw-bold mt-1';
+                    rowErr.style.minWidth = '140px';
+                    rowErr.textContent = row.errors._row;
+                    numTd.appendChild(rowErr);
+                }
                 tr.appendChild(numTd);
 
                 fields.forEach(function (field) {

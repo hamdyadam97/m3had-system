@@ -106,35 +106,53 @@ def clean_person_name(name):
     return name
 
 
-def find_collector_id(collector_raw, collectors_cache):
-    """البحث الذكي عن المحصل باستخدام matching مرن"""
+COLLECTOR_FUZZY_MIN_RATIO = 0.8
+
+
+def match_collector(collector_raw, collectors_cache):
+    """يطابق اسم المحصل بموظف واحد بس لو المطابقة مش ملتبسة.
+
+    بيرجع (id أو None, ambiguous) - ambiguous=True معناها إن في أكتر من موظف
+    مختلف بيطابق الاسم، فمش بنختار حد عشوائي ونسيب المستخدم يحدد بنفسه.
+    """
+    import difflib
+
     cleaned_raw = clean_person_name(collector_raw)
     if not cleaned_raw:
-        return None
+        return None, False
 
-    # محاولة 1: exact match
-    for cname, cid in collectors_cache.items():
-        if cleaned_raw == clean_person_name(cname):
-            return cid
+    cleaned = [(clean_person_name(cname), cid) for cname, cid in collectors_cache.items()]
 
-    # محاولة 2: contains
-    for cname, cid in collectors_cache.items():
-        cleaned_cname = clean_person_name(cname)
-        if cleaned_raw in cleaned_cname or cleaned_cname in cleaned_raw:
-            return cid
+    # محاولة 1: تطابق تام
+    ids = {cid for cname, cid in cleaned if cname == cleaned_raw}
+    if len(ids) == 1:
+        return ids.pop(), False
+    if len(ids) > 1:
+        return None, True
 
-    # محاولة 3: fuzzy matching
-    import difflib
-    best_ratio = 0
-    best_id = None
-    for cname, cid in collectors_cache.items():
-        cleaned_cname = clean_person_name(cname)
-        ratio = difflib.SequenceMatcher(None, cleaned_raw, cleaned_cname).ratio()
-        if ratio > best_ratio and ratio >= 0.5:
-            best_ratio = ratio
-            best_id = cid
+    # محاولة 2: الاسم جزء من اسم موظف (أو العكس) - بس لو موظف واحد فقط
+    # (مثلاً "محمد" بيطابق "محمد علي" و"محمد سعيد" فدي حالة ملتبسة)
+    ids = {cid for cname, cid in cleaned if cleaned_raw in cname or cname in cleaned_raw}
+    if len(ids) == 1:
+        return ids.pop(), False
+    if len(ids) > 1:
+        return None, True
 
-    return best_id
+    # محاولة 3: تشابه عالي جداً (أخطاء إملائية بسيطة) - وبرضه موظف واحد بس
+    ids = {
+        cid for cname, cid in cleaned
+        if difflib.SequenceMatcher(None, cleaned_raw, cname).ratio() >= COLLECTOR_FUZZY_MIN_RATIO
+    }
+    if len(ids) == 1:
+        return ids.pop(), False
+    if len(ids) > 1:
+        return None, True
+    return None, False
+
+
+def find_collector_id(collector_raw, collectors_cache):
+    """للتوافق الخلفي: بيرجع id المحصل لو المطابقة واضحة وغير ملتبسة."""
+    return match_collector(collector_raw, collectors_cache)[0]
 
 
 def _match_quality(ratio):
@@ -293,18 +311,17 @@ def _resolve_income_type(raw):
 
 
 def _resolve_payment_method(raw):
+    # لازم القيمة الراجعة تكون دايماً من Income.PAYMENT_METHOD_CHOICES
+    # (مدى / بنك / كاش) وإلا هتختفي من تقسيم التقارير حسب طريقة الدفع.
+    # فيزا وماستركارد مدفوعات شبكة/بطاقة فبتتسجل "مدى".
     raw = (raw or '').strip()
-    if raw in ('mada', 'visa', 'mastercard', 'bank_transfer', 'cash'):
+    if raw in ('mada', 'bank_transfer', 'cash'):
         return raw
     low = raw.lower()
     if 'بنك' in low or 'تحويل' in low or 'bank' in low:
         return 'bank_transfer'
     if 'كاش' in low or 'نقد' in low or 'cash' in low:
         return 'cash'
-    if 'فيزا' in low or 'visa' in low:
-        return 'visa'
-    if 'ماستر' in low or 'master' in low:
-        return 'mastercard'
     return 'mada'
 
 
@@ -399,9 +416,13 @@ def validate_income_row(data, courses_cache, collectors_cache_branch, collectors
     if not collector:
         errors['collector_name'] = 'المحصل مطلوب'
     else:
-        collected_by_id = find_collector_id(collector, collectors_cache_branch) or \
-            find_collector_id(collector, collectors_cache_all)
-        if not collected_by_id:
+        # الأولوية لموظفي نفس الفرع، ولو مفيش أي تطابق فيهم ندوّر في الكل
+        collected_by_id, ambiguous = match_collector(collector, collectors_cache_branch)
+        if not collected_by_id and not ambiguous:
+            collected_by_id, ambiguous = match_collector(collector, collectors_cache_all)
+        if ambiguous:
+            errors['collector_name'] = f'الاسم "{collector}" يطابق أكثر من موظف، اختر المحصل من القائمة'
+        elif not collected_by_id:
             errors['collector_name'] = f'المحصل "{collector}" غير مسجل ضمن طاقم العمل'
 
     normalized['transaction_number'] = (data.get('transaction_number') or '').strip()
@@ -421,6 +442,66 @@ def validate_income_row(data, courses_cache, collectors_cache_branch, collectors
     return normalized, errors, collected_by_id, course_id, course_match
 
 
+# =============================================================================
+# كشف التكرار مع البيانات المسجلة فعلاً (عشان رفع نفس الملف مرتين ميضاعفش الأرقام)
+# =============================================================================
+
+DUPLICATE_ROW_ERROR = 'هذا الصف مسجل بالفعل في النظام (نفس التاريخ والاسم والمبلغ والنوع) - احذفه من الاستيراد'
+DUPLICATE_EXPENSE_ROW_ERROR = 'هذا المصروف مسجل بالفعل في النظام (نفس التاريخ والبند والمبلغ والفئة) - احذفه من الاستيراد'
+
+
+def _norm_text(value):
+    return ' '.join(str(value or '').split())
+
+
+def _norm_amount(value):
+    from decimal import Decimal, InvalidOperation
+    try:
+        return Decimal(str(value)).quantize(Decimal('0.01'))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _valid_iso_dates(normalized_rows):
+    dates = set()
+    for d in normalized_rows:
+        try:
+            dates.add(datetime.strptime(d.get('date') or '', '%Y-%m-%d').date())
+        except ValueError:
+            pass
+    return dates
+
+
+def _income_key(date_iso, party_name, amount, income_type):
+    return (str(date_iso), _norm_text(party_name), _norm_amount(amount), income_type)
+
+
+def _expense_key(date_iso, description, amount, category):
+    return (str(date_iso), _norm_text(description), _norm_amount(amount), category)
+
+
+def _existing_income_keys(branch, normalized_rows):
+    from .models import Income
+    dates = _valid_iso_dates(normalized_rows)
+    if not branch or not dates:
+        return set()
+    qs = Income.objects.filter(branch=branch, date__in=dates).values_list(
+        'date', 'party_name', 'amount', 'income_type'
+    )
+    return {_income_key(d.isoformat(), name, amount, t) for d, name, amount, t in qs}
+
+
+def _existing_expense_keys(branch, normalized_rows):
+    from .models import Expense
+    dates = _valid_iso_dates(normalized_rows)
+    if not branch or not dates:
+        return set()
+    qs = Expense.objects.filter(branch=branch, date__in=dates).values_list(
+        'date', 'description', 'amount', 'category'
+    )
+    return {_expense_key(d.isoformat(), desc, amount, cat) for d, desc, amount, cat in qs}
+
+
 def run_income_validation(rows, branch, course_required=True):
     """يشغّل التحقق الكامل (100% من الصفوف) على قائمة صفوف إيراد. تُستخدم في
     أول توليد للمعاينة وفي كل نداء لإعادة التحقق."""
@@ -432,11 +513,18 @@ def run_income_validation(rows, branch, course_required=True):
     collectors_cache_branch = _build_collectors_cache(staff_qs.filter(branch=branch))
     collectors_cache_all = _build_collectors_cache(staff_qs)
 
+    validated = [
+        validate_income_row(row_data, courses_cache, collectors_cache_branch, collectors_cache_all, course_required)
+        for row_data in rows
+    ]
+    existing_keys = _existing_income_keys(branch, [v[0] for v in validated])
+
     results = []
-    for idx, row_data in enumerate(rows):
-        normalized, errors, collected_by_id, course_id, course_match = validate_income_row(
-            row_data, courses_cache, collectors_cache_branch, collectors_cache_all, course_required
-        )
+    for idx, (normalized, errors, collected_by_id, course_id, course_match) in enumerate(validated):
+        if not errors and _income_key(
+            normalized['date'], normalized['party_name'], normalized['amount'], normalized['income_type']
+        ) in existing_keys:
+            errors['_row'] = DUPLICATE_ROW_ERROR
         results.append({
             'row_number': idx + 1,
             'data': normalized,
@@ -483,14 +571,21 @@ def validate_expense_row(data, category_choices):
     return normalized, errors, category_match
 
 
-def run_expense_validation(rows):
-    """يشغّل التحقق الكامل (100% من الصفوف) على قائمة صفوف مصروف."""
+def run_expense_validation(rows, branch=None):
+    """يشغّل التحقق الكامل (100% من الصفوف) على قائمة صفوف مصروف. لو اتبعت
+    الفرع بيتعلّم كمان على الصفوف المسجلة بالفعل في النظام كتكرار."""
     from .models import Expense
     category_choices = Expense.EXPENSE_CATEGORY_CHOICES
 
+    validated = [validate_expense_row(row_data, category_choices) for row_data in rows]
+    existing_keys = _existing_expense_keys(branch, [v[0] for v in validated])
+
     results = []
-    for idx, row_data in enumerate(rows):
-        normalized, errors, category_match = validate_expense_row(row_data, category_choices)
+    for idx, (normalized, errors, category_match) in enumerate(validated):
+        if not errors and _expense_key(
+            normalized['date'], normalized['description'], normalized['amount'], normalized['category']
+        ) in existing_keys:
+            errors['_row'] = DUPLICATE_EXPENSE_ROW_ERROR
         results.append({
             'row_number': idx + 1,
             'data': normalized,
@@ -651,7 +746,7 @@ def import_excel_data(file_path, mapping, branch, user):
 def import_excel_expense_data(file_path, mapping, branch, user):
     """استيراد مباشر قديم (بدون معاينة/تعديل) - محفوظة للتوافق الخلفي فقط."""
     rows = parse_rows_for_preview(file_path, mapping, EXPENSE_FIELDS)
-    results = run_expense_validation(rows)
+    results = run_expense_validation(rows, branch)
 
     valid_rows = [r for r in results if r['is_valid']]
     errors = [

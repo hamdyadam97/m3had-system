@@ -357,6 +357,38 @@ from .excel_import import (
     save_staged_import, load_staged_import, update_staged_rows, delete_staged_import,
     cleanup_stale_staged_imports,
 )
+from accounts.services import get_visible_branches
+
+
+def _user_can_use_branch(user, branch):
+    """الفرع جاي من حقل مخفي في المتصفح فلازم نتأكد إنه من فروع المستخدم."""
+    return get_visible_branches(user).filter(id=branch.id).exists()
+
+
+import re
+import secrets
+
+
+def _save_upload_to_temp(uploaded_file, prefix, user):
+    """يحفظ ملف الرفع في مجلد مؤقت باسم عشوائي، ويرجع (اسم الملف فقط, المسار الكامل).
+    اسم الملف بس هو اللي بيروح للمتصفح - عمر المسار الكامل ما بيطلع برّه السيرفر."""
+    ext = os.path.splitext(uploaded_file.name)[1].lower()
+    name = f'{prefix}_{user.id}_{secrets.token_hex(16)}{ext}'
+    path = os.path.join(tempfile.gettempdir(), name)
+    with open(path, 'wb+') as dest:
+        for chunk in uploaded_file.chunks():
+            dest.write(chunk)
+    return name, path
+
+
+def _resolve_temp_upload(value, prefix, user):
+    """يحوّل اسم الملف المؤقت الجاي من المتصفح لمسار آمن، أو None لو مش صالح.
+    مسموح بس باسم بنفس الشكل اللي _save_upload_to_temp بيولّده ولنفس المستخدم،
+    عشان محدش يقدر يبعت مسار ملف تاني على السيرفر (السيرفر بيقرا الملف ويمسحه)."""
+    pattern = rf'{re.escape(prefix)}_{user.id}_[0-9a-f]{{32}}\.(xlsx|xls)'
+    if not value or not re.fullmatch(pattern, value):
+        return None
+    return os.path.join(tempfile.gettempdir(), value)
 
 
 @login_required
@@ -372,13 +404,7 @@ def excel_import(request):
                 branch = form.cleaned_data['branch']
 
                 # حفظ الملف مؤقتاً
-                ext = os.path.splitext(excel_file.name)[1]
-                temp_name = f'excel_import_{request.user.id}_{timezone.now().strftime("%Y%m%d%H%M%S")}{ext}'
-                temp_path = os.path.join(tempfile.gettempdir(), temp_name)
-
-                with open(temp_path, 'wb+') as dest:
-                    for chunk in excel_file.chunks():
-                        dest.write(chunk)
+                temp_name, temp_path = _save_upload_to_temp(excel_file, 'excel_import', request.user)
 
                 try:
                     preview_rows, cols = parse_excel_preview(temp_path)
@@ -404,7 +430,7 @@ def excel_import(request):
                 }
 
                 mapping_form = ExcelMappingForm(initial={
-                    'temp_file': temp_path,
+                    'temp_file': temp_name,
                     'branch': branch.id,
                     'step': 'preview',
                     **initial_mapping
@@ -423,8 +449,10 @@ def excel_import(request):
         elif step == 'preview':
             mapping_form = ExcelMappingForm(request.POST)
             if mapping_form.is_valid():
-                temp_path = mapping_form.cleaned_data['temp_file']
+                temp_path = _resolve_temp_upload(mapping_form.cleaned_data['temp_file'], 'excel_import', request.user)
                 branch = mapping_form.cleaned_data['branch']
+                if temp_path is None or not _user_can_use_branch(request.user, branch):
+                    raise PermissionDenied
                 mapping = {
                     'party_name': mapping_form.cleaned_data.get('party_name'),
                     'id_number': mapping_form.cleaned_data.get('id_number'),
@@ -640,13 +668,7 @@ def excel_import_expense(request):
                 excel_file = form.cleaned_data['excel_file']
                 branch = form.cleaned_data['branch']
 
-                ext = os.path.splitext(excel_file.name)[1]
-                temp_name = f'excel_expense_import_{request.user.id}_{timezone.now().strftime("%Y%m%d%H%M%S")}{ext}'
-                temp_path = os.path.join(tempfile.gettempdir(), temp_name)
-
-                with open(temp_path, 'wb+') as dest:
-                    for chunk in excel_file.chunks():
-                        dest.write(chunk)
+                temp_name, temp_path = _save_upload_to_temp(excel_file, 'excel_expense_import', request.user)
 
                 try:
                     preview_rows, cols = parse_excel_preview(temp_path)
@@ -667,7 +689,7 @@ def excel_import_expense(request):
                 }
 
                 mapping_form = ExcelExpenseMappingForm(initial={
-                    'temp_file': temp_path,
+                    'temp_file': temp_name,
                     'branch': branch.id,
                     'step': 'preview',
                     **initial_mapping
@@ -686,8 +708,10 @@ def excel_import_expense(request):
         elif step == 'preview':
             mapping_form = ExcelExpenseMappingForm(request.POST)
             if mapping_form.is_valid():
-                temp_path = mapping_form.cleaned_data['temp_file']
+                temp_path = _resolve_temp_upload(mapping_form.cleaned_data['temp_file'], 'excel_expense_import', request.user)
                 branch = mapping_form.cleaned_data['branch']
+                if temp_path is None or not _user_can_use_branch(request.user, branch):
+                    raise PermissionDenied
                 mapping = {
                     'description': mapping_form.cleaned_data.get('description'),
                     'category': mapping_form.cleaned_data.get('category'),
@@ -719,7 +743,7 @@ def excel_import_expense(request):
                     messages.warning(request, 'الملف لا يحتوي على أي صفوف بيانات.')
                     return redirect('transactions:excel_import_expense')
 
-                results = run_expense_validation(raw_rows)
+                results = run_expense_validation(raw_rows, branch)
 
                 cleanup_stale_staged_imports()
                 token = save_staged_import('expense', branch.id, request.user.id, results)
@@ -764,10 +788,11 @@ def excel_import_expense_revalidate(request):
     if not _expense_staged_ok(staged, request.user):
         return JsonResponse({'error': 'جلسة الاستيراد غير موجودة أو منتهية'}, status=404)
 
+    branch = get_object_or_404(Branch, id=staged['branch_id'])
     edited_rows = payload.get('rows') or []
     rows_data = [r.get('data', {}) for r in edited_rows] if edited_rows else [r['data'] for r in staged['rows']]
 
-    results = run_expense_validation(rows_data)
+    results = run_expense_validation(rows_data, branch)
     update_staged_rows(token, results)
 
     return JsonResponse({'rows': results, 'all_valid': all(r['is_valid'] for r in results)})
@@ -791,7 +816,7 @@ def excel_import_expense_commit(request):
 
     branch = get_object_or_404(Branch, id=staged['branch_id'])
     rows_data = [r['data'] for r in staged['rows']]
-    results = run_expense_validation(rows_data)
+    results = run_expense_validation(rows_data, branch)
 
     if not all(r['is_valid'] for r in results):
         previously_valid = all(r['is_valid'] for r in staged['rows'])
